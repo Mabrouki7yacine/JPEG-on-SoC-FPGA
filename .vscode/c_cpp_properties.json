@@ -1,0 +1,40 @@
+{
+  "configurations": [
+    {
+      "name": "Xilinx Zynq-7010 Cortex-A9",
+
+      "compilerPath": "/usr/bin/arm-none-eabi-gcc",
+      "intelliSenseMode": "linux-gcc-arm",
+
+      "includePath": [
+        "${workspaceFolder}/**",
+        "/home/yacine/projects/Zynq7010/fft_test/fft_test.sdk/fft_test_bsp/ps7_cortexa9_0/include"
+      ],
+
+      "browse": {
+        "path": [
+          "${workspaceFolder}",
+          "/home/yacine/projects/Zynq7010/fft_test/fft_test.sdk/fft_test_bsp/ps7_cortexa9_0/include"
+        ],
+        "limitSymbolsToIncludedHeaders": true
+      },
+
+      "compilerArgs": [
+        "-mcpu=cortex-a9",
+        "-mfpu=neon",
+        "-mfloat-abi=hard",
+        "-marm"
+      ],
+
+      "defines": [
+        "__arm__",
+        "__ARM_NEON",
+        "__ARM_NEON__"
+      ],
+
+      "cStandard": "c11",
+      "cppStandard": "c++17"
+    }
+  ],
+  "version": 4
+}
