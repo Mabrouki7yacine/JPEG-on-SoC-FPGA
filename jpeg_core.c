@@ -291,26 +291,210 @@ uint32_t DownSampling(uint8_t *Cb_Channel, uint8_t *Cr_Channel, uint16_t width, 
     return 0;
 }
 
-Padding PaddImage(uint8_t *Src_Channel, uint16_t width, uint16_t height, ChType type, uint8_t *Out_Channel)
-{
-    uint16_t width_div = width / 16;
-    uint16_t width_rem = width % 16;
+// Padding PaddImage(uint8_t *Src_Channel, uint16_t width, uint16_t height, ChType type, uint8_t *Out_Channel)
+// {
+//     uint16_t width_div = width / 16;
+//     uint16_t width_rem = width % type;
 
-    uint16_t height_div = height / 16;
-    uint16_t height_rem = height % 16;
+//     uint16_t height_div = height / 16;
+//     uint16_t height_rem = height % type;
+
+//     uint16_t new_width  = width_rem  == 0 ? width  : width  + (type - width_rem);
+//     uint16_t new_height = height_rem == 0 ? height : height + (type - height_rem);
+
+//     Padding retval = PADDED_ALREADY;
+
+//     if (width_rem != 0) {
+//         retval = REQUIRE_W_PADDING;
+//         for (uint16_t i = 0; i < height; i++) {
+//             for (uint16_t j = 0; j < width_div * 16; j+=16) {
+//                 uint8x16_t  vSrc = vld1q_u8( &(Src_Channel[i * width + j]) );
+//                 vst1q_u8(&(Out_Channel[i * new_width + j]) , vSrc);
+//             }
+//             for (uint16_t j = width_div * 16; j < new_width; j++) {
+//                 Out_Channel[i * new_width + j] = Src_Channel[i * width + width - 1]; 
+//             }
+//         }
+//     }
+//     if (height_rem != 0) {
+//         if (retval != REQUIRE_W_PADDING) {
+//             retval = REQUIRE_H_PADDING;
+//             if (type == Luminance) {
+//                 for (uint16_t i = 0; i < height; i++) {
+//                     for (uint16_t j = 0; j < width; j+=16) {
+//                         uint8x16_t  vSrc = vld1q_u8( &(Src_Channel[i * width + j]) );
+//                         vst1q_u8(&(Out_Channel[i * width + j]) , vSrc);
+//                     }
+//                 }
+//             } else if (type == Chroma) {
+//                  for (uint16_t i = 0; i < height; i++) {
+//                     for (uint16_t j = 0; j < width; j+=8) {
+//                         uint8x8_t  vSrc = vld1_u8( &(Src_Channel[i * width + j]) );
+//                         vst1_u8(&(Out_Channel[i * width + j]) , vSrc);
+//                     }
+//                 }
+//             }
+
+//             if (type == Luminance) {
+//                 for (uint16_t i = height; i < new_height; i++) {
+//                     for (uint16_t j = 0; j < new_width; j+=16) {
+//                         uint8x16_t  vSrc = vld1q_u8( &(Out_Channel[new_width * (height - 1) + j]) );
+//                         vst1q_u8(&(Out_Channel[i * new_width + j]) , vSrc);
+//                     }
+//                 }
+//             } else if (type == Chroma) {
+//                 for (uint16_t i = height; i < new_height; i++) {
+//                     for (uint16_t j = 0; j < new_width; j+=8) {
+//                         uint8x8_t  vSrc = vld1_u8( &(Out_Channel[new_width * (height - 1) + j]) );
+//                         vst1_u8(&(Out_Channel[i * new_width + j]) , vSrc);
+//                     }
+//                 }
+//             }
+//         } else {
+//             retval = REQUIRE_F_PADDING;
+//             if (type == Luminance) {
+//                 for (uint16_t i = height; i < new_height; i++) {
+//                     for (uint16_t j = 0; j < new_width; j+=16) {
+//                         uint8x16_t  vSrc = vld1q_u8( &(Out_Channel[new_width * (height - 1) + j]) );
+//                         vst1q_u8(&(Out_Channel[i * new_width + j]) , vSrc);
+//                     }
+//                 }
+//             } else if (type == Chroma) {
+//                 for (uint16_t i = height; i < new_height; i++) {
+//                     for (uint16_t j = 0; j < width_div * 16; j+=8) {
+//                         uint8x8_t  vSrc = vld1_u8( &(Out_Channel[new_width * (height - 1) + j]) );
+//                         vst1_u8(&(Out_Channel[i * new_width + j]) , vSrc);
+//                     }
+//                 }
+//             }
+//         }
+
+//     }
+
+//     return retval;
+// }
+
+
+
+Padding PaddImage(const uint8_t *Src_Channel, uint16_t width, uint16_t height, ChType type, uint8_t *Out_Channel ) 
+{
+    assert(Src_Channel != NULL);
+    assert(Out_Channel != NULL);
+    assert(width > 0);
+    assert(height > 0);
+    assert(type == Luminance || type == Chroma);
+
+    const uint16_t block = (uint16_t)type;
+
+    const uint16_t width_rem  = width  % block;
+    const uint16_t height_rem = height % block;
+
+    if (width_rem == 0 && height_rem == 0) {
+        return PADDED_ALREADY;
+    }
+
+    const uint16_t new_width  = (width_rem == 0) ? width : width + block - width_rem;
+    const uint16_t new_height = (height_rem == 0) ? height : height + block - height_rem;
+
+    /*
+     * Copy every original row.
+     * If width padding is required, repeat the final valid pixel.
+     */
+    for (uint16_t i = 0; i < height; i++) {
+        const uint8_t *src_row = &Src_Channel[(size_t)i * width];
+        uint8_t *dst_row = &Out_Channel[(size_t)i * new_width];
+
+        uint16_t j = 0;
+
+        /* Copy complete groups of 16 pixels using NEON. */
+        for (; j + 15 < width; j += 16) {
+            uint8x16_t pixels = vld1q_u8(&src_row[j]);
+            vst1q_u8(&dst_row[j], pixels);
+        }
+
+        /* Copy remaining valid pixels. */
+        for (; j < width; j++) {
+            dst_row[j] = src_row[j];
+        }
+
+        /* Repeat the final valid pixel for right padding. */
+        const uint8_t last_pixel = src_row[width - 1];
+
+        for (; j < new_width; j++) {
+            dst_row[j] = last_pixel;
+        }
+    }
+
+    /*
+     * If height padding is required, repeat the final padded row.
+     */
+    const uint8_t *last_row = &Out_Channel[(size_t)(height - 1) * new_width];
+
+    for (uint16_t i = height; i < new_height; i++) {
+        uint8_t *dst_row = &Out_Channel[(size_t)i * new_width];
+
+        uint16_t j = 0;
+
+        for (; j + 15 < new_width; j += 16) {
+            uint8x16_t pixels = vld1q_u8(&last_row[j]);
+            vst1q_u8(&dst_row[j], pixels);
+        }
+
+        for (; j < new_width; j++) {
+            dst_row[j] = last_row[j];
+        }
+    }
+
+    if (width_rem != 0 && height_rem != 0) {
+        return REQUIRE_F_PADDING;
+    }
 
     if (width_rem != 0) {
-        for (uint16_t i = 0; i < height; i++) {
-            for (uint16_t i = 0; i < width; i+=16) {
-                
-            }
-
-        }
-        
-        return WIDTH_PADDED;
-    } else if (height_rem != 0) {
-
-        return HEIGHT_PADDED;
+        return REQUIRE_W_PADDING;
     }
-    return PADDED_ALREADY;
+
+    return REQUIRE_H_PADDING;
+}
+
+uint32_t BuildMCU420(
+    uint8_t *Y_Channel, 
+    uint8_t *Cb_Channel, 
+    uint8_t *Cr_Channel, 
+    uint16_t width, 
+    uint16_t height, 
+    MCU_block_t** MCU_block)
+{
+    assert(Y_Channel  != NULL);
+    assert(Cb_Channel != NULL);
+    assert(Cr_Channel != NULL);
+    assert(MCU_block  != NULL);
+    assert(width > 0);
+    assert(height > 0);
+
+    uint16_t YwBlocks = width  / 16;
+    uint16_t YhBlocks = height / 16;
+
+    // i hope no one will read this rah t3ya use python wla kch language fiha libs wajdin
+    for (uint16_t i = 0; i < YhBlocks; i++){
+        for (uint16_t j = 0; j < YwBlocks; j++){
+            for (uint16_t k = 0; k < 8; k++) {
+                uint8x8_t  vSrc = vld1_u8( &(Y_Channel[(i * 16 + k) * width + (j * 16) ]) );
+                vst1_u8(&(MCU_block[i][j].Y0[k * 8]) , vSrc);
+                vSrc = vld1_u8( &(Y_Channel[(i * 16 + k) * width + (j * 16) + 8]) );
+                vst1_u8(&(MCU_block[i][j].Y1[k * 8]) , vSrc);
+                vSrc = vld1_u8( &(Y_Channel[(i * 16 + k) * width + (j * 16) + 8 * width]) );
+                vst1_u8(&(MCU_block[i][j].Y2[k * 8]) , vSrc);
+                vSrc = vld1_u8( &(Y_Channel[(i * 16 + k) * width + (j * 16) + 8 * width + 8]) );
+                vst1_u8(&(MCU_block[i][j].Y3[k * 8]) , vSrc);
+            }
+            MCU_block[i][j].block_pos_width = j;
+            MCU_block[i][j].block_pos_height = i;
+        }
+    }
+
+
+    uint16_t ChwBlocks = width  / 8;
+    uint16_t ChhBlocks = height / 8;
+
+    return 0;
 }

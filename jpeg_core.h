@@ -35,33 +35,41 @@ typedef struct __attribute__((packed)) {
 } YCbCr;
 
 typedef struct __attribute__((packed)) {
-    uint8_t* Y0;
-    uint8_t* Y1;
-    uint8_t* Y2;
-    uint8_t* Y3;
-    uint8_t* Cb;
-    uint8_t* Cr;
+    uint8_t Y0[64];
+    uint8_t Y1[64];
+    uint8_t Y2[64];
+    uint8_t Y3[64];
+    uint8_t Cb[64];
+    uint8_t Cr[64];
+    uint16_t block_pos_width;
+    uint16_t block_pos_height;
 } MCU_block_t;
 
 typedef enum {
     PADDED_ALREADY,
-    HEIGHT_PADDED,
-    WIDTH_PADDED,
-    REQUIRE_PADDING,
+    REQUIRE_H_PADDING,
+    REQUIRE_W_PADDING,
+    REQUIRE_F_PADDING,
 } Padding;
 
 typedef enum {
     Luminance = 16,
-    Color = 8,
+    Chroma = 8,
 } ChType;
 
 uint32_t RGB2YCbCr(const RGB* RGB_stream, const uint16_t block_size, uint8_t *Y_Channel, uint8_t *Cb_Channel, uint8_t *Cr_Channel);
 
 uint32_t DownSampling(uint8_t *Cb_Channel, uint8_t *Cr_Channel, uint16_t width, uint16_t height, uint8_t *Cb_Out, uint8_t *Cr_Out);
 
-Padding PaddImage(uint8_t *Src_Channel, uint16_t width, uint16_t height, ChType type, uint8_t *Out_Channel);
+Padding PaddImage(const uint8_t *Src_Channel, uint16_t width, uint16_t height, ChType type, uint8_t *Out_Channel );
 
-uint32_t BuildMCU420(MCU_block_t MCU_block);
+uint32_t BuildMCU420(
+uint8_t *Y_Channel, 
+uint8_t *Cb_Channel, 
+uint8_t *Cr_Channel, 
+uint16_t width, 
+uint16_t height, 
+MCU_block_t** MCU_block);
 
 uint32_t SendBlocksToPL(MCU_block_t MCU_block);
 
@@ -72,7 +80,6 @@ uint32_t ZigZagScan(uint8_t *Quant_coeff, uint8_t *Zigzag_coeff);
 uint32_t DCDifferenceEncoding(uint8_t *Quant_coeff);
 
 uint32_t RunLengthEncoding(uint8_t *Coeff);
-
 
 
 #endif
