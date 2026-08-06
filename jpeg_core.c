@@ -470,10 +470,13 @@ uint32_t BuildMCU420(
     assert(MCU_block  != NULL);
     assert(width > 0);
     assert(height > 0);
+    assert((width  % 16) == 0);
+    assert((height % 16) == 0);
 
     uint16_t YwBlocks = width  / 16;
     uint16_t YhBlocks = height / 16;
 
+    const uint16_t chroma_width = width / 2;
     // i hope no one will read this rah t3ya use python wla kch language fiha libs wajdin
     for (uint16_t i = 0; i < YhBlocks; i++){
         for (uint16_t j = 0; j < YwBlocks; j++){
@@ -486,15 +489,14 @@ uint32_t BuildMCU420(
                 vst1_u8(&(MCU_block[i][j].Y2[k * 8]) , vSrc);
                 vSrc = vld1_u8( &(Y_Channel[(i * 16 + k) * width + (j * 16) + 8 * width + 8]) );
                 vst1_u8(&(MCU_block[i][j].Y3[k * 8]) , vSrc);
+                vSrc = vld1_u8(&Cb_Channel[(i * 8 + k) * chroma_width +(j * 8)]);
+                vst1_u8( &MCU_block[i][j].Cb[k * 8], vSrc);
+                vSrc = vld1_u8(&Cr_Channel[(i * 8 + k) * chroma_width +(j * 8)]);
+                vst1_u8( &MCU_block[i][j].Cr[k * 8], vSrc);
             }
             MCU_block[i][j].block_pos_width = j;
             MCU_block[i][j].block_pos_height = i;
         }
     }
-
-
-    uint16_t ChwBlocks = width  / 8;
-    uint16_t ChhBlocks = height / 8;
-
     return 0;
 }
