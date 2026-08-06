@@ -1,6 +1,12 @@
 #ifndef JPEG_CORE_H
 #define JPEG_CORE_H
 
+#include "xaxidma.h"
+#include "xil_types.h"
+#include "xil_cache.h"
+#include "xil_printf.h"
+#include "xparameters.h"
+
 #include <arm_neon.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -71,9 +77,9 @@ uint16_t width,
 uint16_t height, 
 MCU_block_t** MCU_block);
 
-uint32_t SendBlocksToPL(MCU_block_t MCU_block);
+uint32_t SendBlockToPL(XAxiDma* AxiDma, MCU_block_t MCU_block);
 
-uint32_t ReceiveQuantizedBlocks(MCU_block_t MCU_block);
+uint32_t ReceiveQuantizedBlocks(XAxiDma* AxiDma, MCU_block_t MCU_block);
 
 uint32_t ZigZagScan(uint8_t *Quant_coeff, uint8_t *Zigzag_coeff);
 

@@ -498,5 +498,5 @@ uint32_t BuildMCU420(
             MCU_block[i][j].block_pos_height = i;
         }
     }
-    return 0;
+    return YwBlocks * YhBlocks;
 }
