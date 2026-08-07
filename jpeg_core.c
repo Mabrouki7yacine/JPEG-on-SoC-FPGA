@@ -615,3 +615,47 @@ void ZigZagScan(sMCU_block_t* QuantBlock, sMCU_block_t* ZigzagBlock)
         ZigzagBlock->Cr[i] = QuantBlock->Cr[JPEG_ZIGZAG[i]];
     }
 }
+
+static inline uint8_t GetCategoryInt8(int8_t value)
+{
+    return CATEGORY_LUT[(uint8_t)value];
+}
+
+uint32_t RunLengthEncoding(const int8_t *QuantCoeff, RLE_Entry_t* RLE_Entry)
+{
+    int8_t ZigZagValue = 0;
+    uint8_t ZeroCount   = 0;
+    uint8_t ZrlCount    = 0;
+    uint8_t RLE_Entry_Count = 0;
+    uint8_t bit_size;
+    for (uint8_t i = 1; i < 64; i++) {
+        ZigZagValue = QuantCoeff[JPEG_ZIGZAG[i]];
+        if (ZigZagValue ==  0) {
+            ZeroCount++;
+            if (ZeroCount >= 16) {
+                ZeroCount -= 16;
+                ZrlCount++;
+            }
+            if (i == 63) {
+                RLE_Entry[RLE_Entry_Count].symbol = EOB_VALUE; 
+                RLE_Entry[RLE_Entry_Count].value  = 0x00;
+                RLE_Entry_Count++;
+            }
+        } else {
+            for (int j = 0; j < ZrlCount; j++) {
+                RLE_Entry[RLE_Entry_Count].symbol = ZRL_VALUE; 
+                RLE_Entry[RLE_Entry_Count].value  = 0x00; 
+                RLE_Entry_Count++;
+            }
+            ZrlCount = 0;
+
+            bit_size = GetCategoryInt8(ZigZagValue);
+            RLE_Entry[RLE_Entry_Count].symbol = (ZeroCount << 4) | bit_size;
+            RLE_Entry[RLE_Entry_Count].value  = ZigZagValue;
+            RLE_Entry_Count++;
+
+            ZeroCount = 0;
+        }
+    }
+    return RLE_Entry_Count;
+}

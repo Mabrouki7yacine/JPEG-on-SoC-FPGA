@@ -28,6 +28,8 @@
 #define Coeff_Cr_G -0.418688f
 #define Coeff_Cr_B -0.081312f
 
+#define ZRL_VALUE 0xF0
+#define EOB_VALUE 0x00
 
 typedef struct __attribute__((packed)) {
     uint8_t R;
@@ -71,6 +73,11 @@ typedef enum {
     Chroma = 8,
 } ChType;
 
+typedef struct {
+    uint8_t symbol;   // (RUN << 4) | SIZE
+    int8_t  value;    // actual AC coefficient
+} RLE_Entry_t;
+
 static const uint8_t JPEG_ZIGZAG[64] = {
      0,  1,  8, 16,  9,  2,  3, 10,
     17, 24, 32, 25, 18, 11,  4,  5,
@@ -80,6 +87,27 @@ static const uint8_t JPEG_ZIGZAG[64] = {
     29, 22, 15, 23, 30, 37, 44, 51,
     58, 59, 52, 45, 38, 31, 39, 46,
     53, 60, 61, 54, 47, 55, 62, 63
+};
+
+static const uint8_t CATEGORY_LUT[256] = {
+    0,1,2,2,3,3,3,3,4,4,4,4,4,4,4,4,
+    5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,
+    6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,
+    6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,
+    7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,
+    7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,
+    7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,
+    7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,
+
+    /* 128 = -128 */
+    8,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,
+    7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,
+    7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,
+    7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,
+    7,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,
+    6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,
+    6,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,
+    5,4,4,4,4,4,4,4,4,3,3,3,3,2,2,1
 };
 
 uint32_t RGB2YCbCr(const RGB* RGB_stream, const uint16_t block_size, uint8_t *Y_Channel, uint8_t *Cb_Channel, uint8_t *Cr_Channel);
@@ -106,7 +134,7 @@ void DCDifferenceEncoding(const sMCU_block_t *QuantBlock, int16_t dc_diff_val[6]
 
 void ZigZagScan(sMCU_block_t* QuantBlock, sMCU_block_t* ZigzagBlock);
 
-uint32_t RunLengthEncoding(uint8_t *Coeff);
+uint32_t RunLengthEncoding(int8_t *QuantCoeff, RLE_Entry_t* RLE_Entry);
 
 
 #endif
