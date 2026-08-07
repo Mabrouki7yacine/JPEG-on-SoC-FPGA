@@ -14,6 +14,7 @@
 #include <math.h>
 
 #define BLOCK_SIZE 384 // 4 * 8 * 8 + 2 * 8 * 8
+#define TIMEOUT_LIMIT 10000000
 
 #define Coeff_Y_R   0.299f
 #define Coeff_Y_G   0.587f
@@ -47,9 +48,16 @@ typedef struct __attribute__((packed)) {
     uint8_t Y3[64];
     uint8_t Cb[64];
     uint8_t Cr[64];
-    uint16_t block_pos_width;
-    uint16_t block_pos_height;
-} MCU_block_t;
+} uMCU_block_t;
+
+typedef struct __attribute__((packed)) {
+    int8_t Y0[64];
+    int8_t Y1[64];
+    int8_t Y2[64];
+    int8_t Y3[64];
+    int8_t Cb[64];
+    int8_t Cr[64];
+} sMCU_block_t;
 
 typedef enum {
     PADDED_ALREADY,
@@ -63,6 +71,17 @@ typedef enum {
     Chroma = 8,
 } ChType;
 
+static const uint8_t JPEG_ZIGZAG[64] = {
+     0,  1,  8, 16,  9,  2,  3, 10,
+    17, 24, 32, 25, 18, 11,  4,  5,
+    12, 19, 26, 33, 40, 48, 41, 34,
+    27, 20, 13,  6,  7, 14, 21, 28,
+    35, 42, 49, 56, 57, 50, 43, 36,
+    29, 22, 15, 23, 30, 37, 44, 51,
+    58, 59, 52, 45, 38, 31, 39, 46,
+    53, 60, 61, 54, 47, 55, 62, 63
+};
+
 uint32_t RGB2YCbCr(const RGB* RGB_stream, const uint16_t block_size, uint8_t *Y_Channel, uint8_t *Cb_Channel, uint8_t *Cr_Channel);
 
 uint32_t DownSampling(uint8_t *Cb_Channel, uint8_t *Cr_Channel, uint16_t width, uint16_t height, uint8_t *Cb_Out, uint8_t *Cr_Out);
@@ -75,15 +94,17 @@ uint8_t *Cb_Channel,
 uint8_t *Cr_Channel, 
 uint16_t width, 
 uint16_t height, 
-MCU_block_t** MCU_block);
+uMCU_block_t** MCU_block);
 
-int32_t SendBlockToPL(XAxiDma* AxiDma, MCU_block_t* InMCU_block, MCU_block_t* OutMCU_block);
+int32_t SendBlockToPL(XAxiDma* AxiDma, uMCU_block_t* InMCU_block, sMCU_block_t* OutMCU_block);
 
-uint32_t ReceiveQuantizedBlocks(XAxiDma* AxiDma, MCU_block_t MCU_block);
+// uint32_t ReceiveQuantizedBlocks(XAxiDma* AxiDma, MCU_block_t MCU_block);
 
-uint32_t ZigZagScan(uint8_t *Quant_coeff, uint8_t *Zigzag_coeff);
+int32_t wait_dma_done(XAxiDma* AxiDma, int32_t direction);
 
-uint32_t DCDifferenceEncoding(uint8_t *Quant_coeff);
+void DCDifferenceEncoding(sMCU_block_t* QuantBlock);
+
+void ZigZagScan(sMCU_block_t* QuantBlock, sMCU_block_t* ZigzagBlock);
 
 uint32_t RunLengthEncoding(uint8_t *Coeff);
 

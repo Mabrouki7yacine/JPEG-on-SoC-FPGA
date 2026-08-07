@@ -462,7 +462,7 @@ uint32_t BuildMCU420(
     uint8_t *Cr_Channel, 
     uint16_t width, 
     uint16_t height, 
-    MCU_block_t** MCU_block)
+    uMCU_block_t** MCU_block)
 {
     assert(Y_Channel  != NULL);
     assert(Cb_Channel != NULL);
@@ -494,8 +494,8 @@ uint32_t BuildMCU420(
                 vSrc = vld1_u8(&Cr_Channel[(i * 8 + k) * chroma_width +(j * 8)]);
                 vst1_u8( &MCU_block[i][j].Cr[k * 8], vSrc);
             }
-            MCU_block[i][j].block_pos_width = j;
-            MCU_block[i][j].block_pos_height = i;
+            // MCU_block[i][j].block_pos_width = j;
+            // MCU_block[i][j].block_pos_height = i;
         }
     }
     return YwBlocks * YhBlocks;
@@ -517,7 +517,7 @@ uint32_t BuildMCU420(
 //     return XST_SUCCESS;
 // }
 
-int32_t SendBlockToPL(XAxiDma* AxiDma, MCU_block_t* InMCU_block, MCU_block_t* OutMCU_block) 
+int32_t SendBlockToPL(XAxiDma* AxiDma, uMCU_block_t* InMCU_block, sMCU_block_t* OutMCU_block)
 {
     int32_t Status;
     Xil_DCacheFlushRange((UINTPTR)&InMCU_block->Y0[0] , BLOCK_SIZE);
@@ -545,5 +545,67 @@ int32_t SendBlockToPL(XAxiDma* AxiDma, MCU_block_t* InMCU_block, MCU_block_t* Ou
     if (Status != XST_SUCCESS) {
         xil_printf("ERROR: MM2S transfer failed to start\r\n");
         return Status;
+    }
+}
+
+int32_t wait_dma_done(XAxiDma* AxiDma, int32_t direction)
+{
+    int timeout = TIMEOUT_LIMIT;
+
+    while (XAxiDma_Busy(AxiDma, direction)) {
+        timeout--;
+
+        if (timeout == 0) {
+            xil_printf("ERROR: DMA timeout\r\n");
+            return XST_FAILURE;
+        }
+    }
+
+    return XST_SUCCESS;
+}
+
+void DCDifferenceEncoding(const sMCU_block_t *QuantBlock, int16_t dc_diff_val[6])
+{
+    static int16_t previous_Y  = 0;
+    static int16_t previous_Cb = 0;
+    static int16_t previous_Cr = 0;
+
+    int16_t current_dc;
+
+    current_dc = QuantBlock->Y0[0];
+    dc_diff_val[0] = current_dc - previous_Y;
+    previous_Y = current_dc;
+
+    current_dc = QuantBlock->Y1[0];
+    dc_diff_val[1] = current_dc - previous_Y;
+    previous_Y = current_dc;
+
+    current_dc = QuantBlock->Y2[0];
+    dc_diff_val[2] = current_dc - previous_Y;
+    previous_Y = current_dc;
+
+    current_dc = QuantBlock->Y3[0];
+    dc_diff_val[3] = current_dc - previous_Y;
+    previous_Y = current_dc;
+
+    current_dc = QuantBlock->Cb[0];
+    dc_diff_val[4] = current_dc - previous_Cb;
+    previous_Cb = current_dc;
+
+    current_dc = QuantBlock->Cr[0];
+    dc_diff_val[5] = current_dc - previous_Cr;
+    previous_Cr = current_dc;
+}
+
+
+void ZigZagScan(sMCU_block_t* QuantBlock, sMCU_block_t* ZigzagBlock)
+{
+    for (uint8_t i = 0; i < 64; i++) {
+        ZigzagBlock->Y0[i] = QuantBlock->Y0[JPEG_ZIGZAG[i]];
+        ZigzagBlock->Y1[i] = QuantBlock->Y1[JPEG_ZIGZAG[i]];
+        ZigzagBlock->Y2[i] = QuantBlock->Y2[JPEG_ZIGZAG[i]];
+        ZigzagBlock->Y3[i] = QuantBlock->Y3[JPEG_ZIGZAG[i]];
+        ZigzagBlock->Cb[i] = QuantBlock->Cb[JPEG_ZIGZAG[i]];
+        ZigzagBlock->Cr[i] = QuantBlock->Cr[JPEG_ZIGZAG[i]];
     }
 }
