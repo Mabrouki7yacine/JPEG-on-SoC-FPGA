@@ -102,7 +102,7 @@ int32_t SendBlockToPL(XAxiDma* AxiDma, uMCU_block_t* InMCU_block, sMCU_block_t* 
 
 int32_t wait_dma_done(XAxiDma* AxiDma, int32_t direction);
 
-void DCDifferenceEncoding(sMCU_block_t* QuantBlock);
+void DCDifferenceEncoding(const sMCU_block_t *QuantBlock, int16_t dc_diff_val[6], int reset);
 
 void ZigZagScan(sMCU_block_t* QuantBlock, sMCU_block_t* ZigzagBlock);
 

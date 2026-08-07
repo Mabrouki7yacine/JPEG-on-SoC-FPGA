@@ -564,11 +564,17 @@ int32_t wait_dma_done(XAxiDma* AxiDma, int32_t direction)
     return XST_SUCCESS;
 }
 
-void DCDifferenceEncoding(const sMCU_block_t *QuantBlock, int16_t dc_diff_val[6])
+void DCDifferenceEncoding(const sMCU_block_t *QuantBlock, int16_t dc_diff_val[6], int reset)
 {
     static int16_t previous_Y  = 0;
     static int16_t previous_Cb = 0;
     static int16_t previous_Cr = 0;
+
+    if (reset == 1) {
+        previous_Y  = 0;
+        previous_Cb = 0;
+        previous_Cr = 0;
+    }
 
     int16_t current_dc;
 
