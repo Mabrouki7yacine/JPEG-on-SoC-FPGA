@@ -500,3 +500,50 @@ uint32_t BuildMCU420(
     }
     return YwBlocks * YhBlocks;
 }
+
+// static int wait_dma_done(int direction)
+// {
+//     int timeout = TIMEOUT_LIMIT;
+
+//     while (XAxiDma_Busy(&AxiDma, direction)) {
+//         timeout--;
+
+//         if (timeout == 0) {
+//             xil_printf("ERROR: DMA timeout\r\n");
+//             return XST_FAILURE;
+//         }
+//     }
+
+//     return XST_SUCCESS;
+// }
+
+int32_t SendBlockToPL(XAxiDma* AxiDma, MCU_block_t* InMCU_block, MCU_block_t* OutMCU_block) 
+{
+    int32_t Status;
+    Xil_DCacheFlushRange((UINTPTR)&InMCU_block->Y0[0] , BLOCK_SIZE);
+    Xil_DCacheFlushRange((UINTPTR)&OutMCU_block->Y0[0], BLOCK_SIZE);
+
+    Status = XAxiDma_SimpleTransfer(
+        AxiDma,
+        (UINTPTR)&OutMCU_block->Y0[0],
+        BLOCK_SIZE,
+        XAXIDMA_DEVICE_TO_DMA
+    );
+
+    if (Status != XST_SUCCESS) {
+        xil_printf("ERROR: S2MM transfer failed to start\r\n");
+        return Status;
+    }
+
+    Status = XAxiDma_SimpleTransfer(
+        AxiDma,
+        (UINTPTR)&InMCU_block->Y0[0],
+        BLOCK_SIZE,
+        XAXIDMA_DMA_TO_DEVICE
+    );
+
+    if (Status != XST_SUCCESS) {
+        xil_printf("ERROR: MM2S transfer failed to start\r\n");
+        return Status;
+    }
+}

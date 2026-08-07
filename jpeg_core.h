@@ -77,7 +77,7 @@ uint16_t width,
 uint16_t height, 
 MCU_block_t** MCU_block);
 
-uint32_t SendBlockToPL(XAxiDma* AxiDma, MCU_block_t MCU_block);
+int32_t SendBlockToPL(XAxiDma* AxiDma, MCU_block_t* InMCU_block, MCU_block_t* OutMCU_block);
 
 uint32_t ReceiveQuantizedBlocks(XAxiDma* AxiDma, MCU_block_t MCU_block);
 
