@@ -78,6 +78,12 @@ typedef struct {
     int8_t  value;    // actual AC coefficient
 } RLE_Entry_t;
 
+typedef struct {
+    int16_t DC;
+    RLE_Entry_t*  RLE_Entry;
+    uint8_t  RLE_Entry_Count;
+} HuffmanBlock_t;
+
 static const uint8_t JPEG_ZIGZAG[64] = {
      0,  1,  8, 16,  9,  2,  3, 10,
     17, 24, 32, 25, 18, 11,  4,  5,
@@ -134,7 +140,14 @@ void DCDifferenceEncoding(const sMCU_block_t *QuantBlock, int16_t dc_diff_val[6]
 
 void ZigZagScan(sMCU_block_t* QuantBlock, sMCU_block_t* ZigzagBlock);
 
-uint32_t RunLengthEncoding(int8_t *QuantCoeff, RLE_Entry_t* RLE_Entry);
+uint32_t RunLengthEncoding(const int8_t *QuantCoeff, RLE_Entry_t* RLE_Entry);
+
+void DCDiffEnc_ZigZag_RLE(
+    const sMCU_block_t *QuantBlock,
+    HuffmanBlock_t *HuffmanBlock,
+    int8_t *previousY,
+    int8_t *previousCb,
+    int8_t *previousCr);
 
 
 #endif

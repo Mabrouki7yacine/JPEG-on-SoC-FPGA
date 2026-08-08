@@ -623,7 +623,7 @@ static inline uint8_t GetCategoryInt8(int8_t value)
 
 uint32_t RunLengthEncoding(const int8_t *QuantCoeff, RLE_Entry_t* RLE_Entry)
 {
-    int8_t ZigZagValue = 0;
+    int8_t  ZigZagValue = 0;
     uint8_t ZeroCount   = 0;
     uint8_t ZrlCount    = 0;
     uint8_t RLE_Entry_Count = 0;
@@ -658,4 +658,126 @@ uint32_t RunLengthEncoding(const int8_t *QuantCoeff, RLE_Entry_t* RLE_Entry)
         }
     }
     return RLE_Entry_Count;
+}
+
+void DCDiffEnc_ZigZag_RLE(
+    const sMCU_block_t *QuantBlock,
+    HuffmanBlock_t *HuffmanBlock,
+    int8_t *previousY,
+    int8_t *previousCb,
+    int8_t *previousCr)
+{
+    const int8_t *blocks[6] = {
+        QuantBlock->Y0,
+        QuantBlock->Y1,
+        QuantBlock->Y2,
+        QuantBlock->Y3,
+        QuantBlock->Cb,
+        QuantBlock->Cr
+    };
+
+    for (uint8_t block = 0; block < 6; block++)
+    {
+        int8_t ZigZagValue = 0;
+        uint8_t ZeroCount = 0;
+        uint8_t ZrlCount = 0;
+        uint8_t RLE_Entry_Count = 0;
+        uint8_t bit_size;
+        int16_t current_dc;
+
+        /* ---------------- DC DIFFERENCE ---------------- */
+
+        current_dc = (int16_t)blocks[block][0];
+
+        if (block < 4)
+        {
+            HuffmanBlock[block].DC =
+                current_dc - (int16_t)(*previousY);
+
+            *previousY = (int8_t)current_dc;
+        }
+        else if (block == 4)
+        {
+            HuffmanBlock[block].DC =
+                current_dc - (int16_t)(*previousCb);
+
+            *previousCb = (int8_t)current_dc;
+        }
+        else
+        {
+            HuffmanBlock[block].DC =
+                current_dc - (int16_t)(*previousCr);
+
+            *previousCr = (int8_t)current_dc;
+        }
+
+        /* ---------------- ZIGZAG + RLE ---------------- */
+
+        for (uint8_t i = 1; i < 64; i++)
+        {
+            ZigZagValue =
+                blocks[block][JPEG_ZIGZAG[i]];
+
+            if (ZigZagValue == 0)
+            {
+                ZeroCount++;
+
+                if (ZeroCount >= 16)
+                {
+                    ZeroCount -= 16;
+                    ZrlCount++;
+                }
+
+                if (i == 63)
+                {
+                    HuffmanBlock[block]
+                        .RLE_Entry[RLE_Entry_Count]
+                        .symbol = EOB_VALUE;
+
+                    HuffmanBlock[block]
+                        .RLE_Entry[RLE_Entry_Count]
+                        .value = 0x00;
+
+                    RLE_Entry_Count++;
+                }
+            }
+            else
+            {
+                for (uint8_t j = 0; j < ZrlCount; j++)
+                {
+                    HuffmanBlock[block]
+                        .RLE_Entry[RLE_Entry_Count]
+                        .symbol = ZRL_VALUE;
+
+                    HuffmanBlock[block]
+                        .RLE_Entry[RLE_Entry_Count]
+                        .value = 0x00;
+
+                    RLE_Entry_Count++;
+                }
+
+                ZrlCount = 0;
+
+                bit_size =
+                    GetCategoryInt8(ZigZagValue);
+
+                HuffmanBlock[block]
+                    .RLE_Entry[RLE_Entry_Count]
+                    .symbol =
+                        (ZeroCount << 4) | bit_size;
+
+                HuffmanBlock[block]
+                    .RLE_Entry[RLE_Entry_Count]
+                    .value =
+                        ZigZagValue;
+
+                RLE_Entry_Count++;
+
+                ZeroCount = 0;
+            }
+        }
+
+        HuffmanBlock[block].RLE_Entry_Count =
+            RLE_Entry_Count;
+    }
 }
