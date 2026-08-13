@@ -621,6 +621,11 @@ static inline uint8_t GetCategoryInt8(int8_t value)
     return CATEGORY_LUT[(uint8_t)value];
 }
 
+static inline uint8_t GetCategoryInt16(int16_t value)
+{
+    return DC_CATEGORY_LUT[value + 255];
+}
+
 uint32_t RunLengthEncoding(const int8_t *QuantCoeff, RLE_Entry_t* RLE_Entry)
 {
     int8_t  ZigZagValue = 0;
@@ -734,5 +739,62 @@ void DCDiffEnc_ZigZag_RLE(
             }
         }
         HuffmanBlock[block].RLE_Entry_Count = RLE_Entry_Count;
+    }
+}
+
+uint64_t HuffmanEncoding(const HuffmanBlock_t *HuffmanBlock, uint32_t NumBlocks, uint8_t* bitstream) {
+    uint64_t BitCount = 0;
+    for (uint32_t i = 0; i < NumBlocks; i++) {
+        uint8_t DcCategory = GetCategoryInt16(HuffmanBlock[i].DC);
+        uint16_t amplitude;
+
+        if (HuffmanBlock[i].DC >= 0)
+            amplitude = HuffmanBlock[i].DC;
+        else
+            amplitude = HuffmanBlock[i].DC + ((1U << DcCategory) - 1);
+
+        HuffmanCode_t huff = ((i % 6) < 4) ? DC_LUMA_HUFFMAN[DcCategory] : DC_CHROMA_HUFFMAN[DcCategory];
+        uint8_t BitsToWrite = DcCategory + huff.length;
+        uint32_t Bits = (huff.code << DcCategory) | amplitude;
+
+        if (BitCount % 8 == 0) {
+            if (BitsToWrite > 8) {
+                uint8_t RemainingBits = BitsToWrite - 8;
+                bitstream[BitCount / 8] = (Bits >> RemainingBits) & 0xFF;
+                bitstream[(BitCount / 8) + 1] = (Bits & ((1U << RemainingBits) - 1)) << (8 - RemainingBits);        
+
+            } else {
+                uint8_t Shift = 8 - BitsToWrite; 
+                bitstream[BitCount / 8] |= (Bits & 0xFF) << Shift;
+            }
+        } else {
+            if (BitsToWrite > 16 - (BitCount % 8)) {
+                uint8_t BitWritten = 0;
+                uint8_t BitWrite = 8 - (BitCount % 8);
+                uint8_t Shift = BitsToWrite - BitWrite; 
+                bitstream[(BitCount / 8)] |= ( (Bits >> Shift) & ((1U << BitWrite) - 1));
+
+                BitWritten = BitWrite;
+                bitstream[(BitCount / 8) + 1] = ((Bits >> (Shift - 8)) & 0xFF);
+
+                BitWritten += 8;
+                BitWrite = BitsToWrite - BitWritten;
+                Shift = 8 - BitWrite; 
+                bitstream[(BitCount / 8) + 2] = Bits << Shift;
+            } else if (BitsToWrite > 8 - (BitCount % 8)) {
+                uint8_t BitWrite = 8 - (BitCount % 8);
+                uint8_t Shift = BitsToWrite - BitWrite; 
+                bitstream[(BitCount / 8)] |= ( (Bits >> Shift) & ((1U << BitWrite) - 1));
+
+                BitWrite = BitsToWrite - BitWrite;
+                Shift = 8 - BitWrite; 
+                bitstream[(BitCount / 8) + 1] = Bits << Shift;
+            } else {
+                uint8_t RemainingBits = 8 - BitsToWrite;
+                uint8_t Shift = RemainingBits - (BitCount % 8); 
+                bitstream[(BitCount / 8)] |= (Bits & ((1U << BitsToWrite) - 1)) << (Shift);
+            }
+        }
+        BitCount += BitsToWrite;
     }
 }
