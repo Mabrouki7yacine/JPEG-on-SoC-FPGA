@@ -796,5 +796,9 @@ uint64_t HuffmanEncoding(const HuffmanBlock_t *HuffmanBlock, uint32_t NumBlocks,
             }
         }
         BitCount += BitsToWrite;
+        for (uint8_t j = 0; j < HuffmanBlock[i].RLE_Entry_Count; j++) {
+            RLE_Entry_t RLE_Entry = HuffmanBlock[i].RLE_Entry[j];
+            // so i should Huffman table lookup(symbol) and append amplitude bits from value then pack the bits to bitstream
+        }
     }
 }
