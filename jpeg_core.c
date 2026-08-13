@@ -765,7 +765,7 @@ uint64_t HuffmanEncoding(const HuffmanBlock_t *HuffmanBlock, uint32_t NumBlocks,
 
             } else {
                 uint8_t Shift = 8 - BitsToWrite; 
-                bitstream[BitCount / 8] |= (Bits & 0xFF) << Shift;
+                bitstream[BitCount / 8] = (Bits & 0xFF) << Shift;
             }
         } else {
             if (BitsToWrite > 16 - (BitCount % 8)) {
