@@ -66,11 +66,11 @@ typedef enum {
     REQUIRE_H_PADDING,
     REQUIRE_W_PADDING,
     REQUIRE_F_PADDING,
-} Padding;
+} Padding_t;
 
 typedef enum {
     Luminance = 16,
-    Chroma = 8,
+    Chroma = 16,
 } ChType;
 
 typedef struct {
@@ -80,7 +80,7 @@ typedef struct {
 
 typedef struct {
     int16_t DC;
-    RLE_Entry_t*  RLE_Entry;
+    RLE_Entry_t  RLE_Entry[64];
     uint8_t  RLE_Entry_Count;
 } HuffmanBlock_t;
 
@@ -590,15 +590,13 @@ uint32_t RGB2YCbCr(const RGB* RGB_stream, const uint16_t block_size, uint8_t *Y_
 
 uint32_t DownSampling(uint8_t *Cb_Channel, uint8_t *Cr_Channel, uint16_t width, uint16_t height, uint8_t *Cb_Out, uint8_t *Cr_Out);
 
-Padding PaddImage(const uint8_t *Src_Channel, uint16_t width, uint16_t height, ChType type, uint8_t *Out_Channel );
+uint32_t GetNumBlocks8x8(uint32_t width, uint32_t height);
 
-uint32_t BuildMCU420(
-uint8_t *Y_Channel, 
-uint8_t *Cb_Channel, 
-uint8_t *Cr_Channel, 
-uint16_t width, 
-uint16_t height, 
-uMCU_block_t** MCU_block);
+uint32_t GetNumBlocks16x16(uint32_t width, uint32_t height);
+
+Padding_t PaddImage(const uint8_t *Src_Channel, uint16_t width, uint16_t height, ChType type, uint8_t *Out_Channel );
+
+uint32_t BuildMCU420(uint8_t *Y_Channel,  uint8_t *Cb_Channel,  uint8_t *Cr_Channel,  uint16_t width,  uint16_t height,  uMCU_block_t* MCU_block);
 
 int32_t SendBlockToPL(XAxiDma* AxiDma, uMCU_block_t* InMCU_block, sMCU_block_t* OutMCU_block);
 

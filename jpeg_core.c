@@ -291,6 +291,22 @@ uint32_t DownSampling(uint8_t *Cb_Channel, uint8_t *Cr_Channel, uint16_t width, 
     return 0;
 }
 
+uint32_t GetNumBlocks8x8(uint32_t width, uint32_t height)
+{
+    uint32_t blocks_x = (width  + 7) / 8;
+    uint32_t blocks_y = (height + 7) / 8;
+
+    return blocks_x * blocks_y;
+}
+
+uint32_t GetNumBlocks16x16(uint32_t width, uint32_t height)
+{
+    uint32_t blocks_x = (width  + 15) / 16;
+    uint32_t blocks_y = (height + 15) / 16;
+
+    return blocks_x * blocks_y;
+}
+
 // Padding PaddImage(uint8_t *Src_Channel, uint16_t width, uint16_t height, ChType type, uint8_t *Out_Channel)
 // {
 //     uint16_t width_div = width / 16;
@@ -376,7 +392,7 @@ uint32_t DownSampling(uint8_t *Cb_Channel, uint8_t *Cr_Channel, uint16_t width, 
 
 
 
-Padding PaddImage(const uint8_t *Src_Channel, uint16_t width, uint16_t height, ChType type, uint8_t *Out_Channel ) 
+Padding_t PaddImage(const uint8_t *Src_Channel, uint16_t width, uint16_t height, ChType type, uint8_t *Out_Channel ) 
 {
     assert(Src_Channel != NULL);
     assert(Out_Channel != NULL);
@@ -462,7 +478,7 @@ uint32_t BuildMCU420(
     uint8_t *Cr_Channel, 
     uint16_t width, 
     uint16_t height, 
-    uMCU_block_t** MCU_block)
+    uMCU_block_t* MCU_block)
 {
     assert(Y_Channel  != NULL);
     assert(Cb_Channel != NULL);
@@ -480,22 +496,30 @@ uint32_t BuildMCU420(
     // i hope no one will read this rah t3ya use python wla kch language fiha libs wajdin
     for (uint16_t i = 0; i < YhBlocks; i++){
         for (uint16_t j = 0; j < YwBlocks; j++){
+            uint32_t MCU_Index = i * YwBlocks + j;
+
             for (uint16_t k = 0; k < 8; k++) {
                 uint8x8_t  vSrc = vld1_u8( &(Y_Channel[(i * 16 + k) * width + (j * 16) ]) );
-                vst1_u8(&(MCU_block[i][j].Y0[k * 8]) , vSrc);
+                vst1_u8(&(MCU_block[MCU_Index].Y0[k * 8]) , vSrc);
+
                 vSrc = vld1_u8( &(Y_Channel[(i * 16 + k) * width + (j * 16) + 8]) );
-                vst1_u8(&(MCU_block[i][j].Y1[k * 8]) , vSrc);
+                vst1_u8(&(MCU_block[MCU_Index].Y1[k * 8]) , vSrc);
+
                 vSrc = vld1_u8( &(Y_Channel[(i * 16 + k) * width + (j * 16) + 8 * width]) );
-                vst1_u8(&(MCU_block[i][j].Y2[k * 8]) , vSrc);
+                vst1_u8(&(MCU_block[MCU_Index].Y2[k * 8]) , vSrc);
+
                 vSrc = vld1_u8( &(Y_Channel[(i * 16 + k) * width + (j * 16) + 8 * width + 8]) );
-                vst1_u8(&(MCU_block[i][j].Y3[k * 8]) , vSrc);
+                vst1_u8(&(MCU_block[MCU_Index].Y3[k * 8]) , vSrc);
+
                 vSrc = vld1_u8(&Cb_Channel[(i * 8 + k) * chroma_width +(j * 8)]);
-                vst1_u8( &MCU_block[i][j].Cb[k * 8], vSrc);
+                vst1_u8( &MCU_block[MCU_Index].Cb[k * 8], vSrc);
+
                 vSrc = vld1_u8(&Cr_Channel[(i * 8 + k) * chroma_width +(j * 8)]);
-                vst1_u8( &MCU_block[i][j].Cr[k * 8], vSrc);
+                vst1_u8( &MCU_block[MCU_Index].Cr[k * 8], vSrc);
             }
-            // MCU_block[i][j].block_pos_width = j;
-            // MCU_block[i][j].block_pos_height = i;
+
+            // MCU_block[MCU_Index].block_pos_width = j;
+            // MCU_block[MCU_Index].block_pos_height = i;
         }
     }
     return YwBlocks * YhBlocks;
@@ -546,6 +570,7 @@ int32_t SendBlockToPL(XAxiDma* AxiDma, uMCU_block_t* InMCU_block, sMCU_block_t* 
         xil_printf("ERROR: MM2S transfer failed to start\r\n");
         return Status;
     }
+    return XST_SUCCESS;
 }
 
 int32_t wait_dma_done(XAxiDma* AxiDma, int32_t direction)
@@ -883,4 +908,5 @@ uint64_t HuffmanEncoding(const HuffmanBlock_t *HuffmanBlock, uint32_t NumBlocks,
 
         }
     }
+    return BitCount;
 }
