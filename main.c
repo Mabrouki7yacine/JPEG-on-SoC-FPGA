@@ -7,103 +7,7 @@
 #include "xtime_l.h"
 #include "ff.h"
 #include "xdevcfg.h"
-
-#define IMAGE_HEIGHT 40
-#define IMAGE_WIDTH  60
-
-#define MAX_JPEG_SIZE (IMAGE_HEIGHT * IMAGE_WIDTH * 3)
-#define MAX_BITS_PER_BLOCK 1536
-#define MAX_BYTES_PER_BLOCK (MAX_BITS_PER_BLOCK / 8)
-
-#define IMAGE_SIZE (IMAGE_HEIGHT * IMAGE_WIDTH)
-
-#define RED_PIXEL       {255,   0,   0}
-#define GREEN_PIXEL     {  0, 255,   0}
-#define BLUE_PIXEL      {  0,   0, 255}
-#define YELLOW_PIXEL    {255, 255,   0}
-
-
-/* 10 pixels */
-#define RED_10      RED_PIXEL, RED_PIXEL, RED_PIXEL, RED_PIXEL, RED_PIXEL, \
-                    RED_PIXEL, RED_PIXEL, RED_PIXEL, RED_PIXEL, RED_PIXEL
-
-#define GREEN_10    GREEN_PIXEL, GREEN_PIXEL, GREEN_PIXEL, GREEN_PIXEL, GREEN_PIXEL, \
-                    GREEN_PIXEL, GREEN_PIXEL, GREEN_PIXEL, GREEN_PIXEL, GREEN_PIXEL
-
-#define BLUE_10     BLUE_PIXEL, BLUE_PIXEL, BLUE_PIXEL, BLUE_PIXEL, BLUE_PIXEL, \
-                    BLUE_PIXEL, BLUE_PIXEL, BLUE_PIXEL, BLUE_PIXEL, BLUE_PIXEL
-
-#define YELLOW_10   YELLOW_PIXEL, YELLOW_PIXEL, YELLOW_PIXEL, YELLOW_PIXEL, YELLOW_PIXEL, \
-                    YELLOW_PIXEL, YELLOW_PIXEL, YELLOW_PIXEL, YELLOW_PIXEL, YELLOW_PIXEL
-
-
-/* One 60-pixel row:
- * 30 pixels left color + 30 pixels right color
- */
-#define ROW_RED_GREEN \
-    RED_10, RED_10, RED_10, \
-    GREEN_10, GREEN_10, GREEN_10
-
-#define ROW_BLUE_YELLOW \
-    BLUE_10, BLUE_10, BLUE_10, \
-    YELLOW_10, YELLOW_10, YELLOW_10
-
-
-const RGB ImageRGB[IMAGE_SIZE] = {
-
-    /* Rows 0 - 19 : RED | GREEN */
-
-    ROW_RED_GREEN,
-    ROW_RED_GREEN,
-    ROW_RED_GREEN,
-    ROW_RED_GREEN,
-    ROW_RED_GREEN,
-
-    ROW_RED_GREEN,
-    ROW_RED_GREEN,
-    ROW_RED_GREEN,
-    ROW_RED_GREEN,
-    ROW_RED_GREEN,
-
-    ROW_RED_GREEN,
-    ROW_RED_GREEN,
-    ROW_RED_GREEN,
-    ROW_RED_GREEN,
-    ROW_RED_GREEN,
-
-    ROW_RED_GREEN,
-    ROW_RED_GREEN,
-    ROW_RED_GREEN,
-    ROW_RED_GREEN,
-    ROW_RED_GREEN,
-
-
-    /* Rows 20 - 39 : BLUE | YELLOW */
-
-    ROW_BLUE_YELLOW,
-    ROW_BLUE_YELLOW,
-    ROW_BLUE_YELLOW,
-    ROW_BLUE_YELLOW,
-    ROW_BLUE_YELLOW,
-
-    ROW_BLUE_YELLOW,
-    ROW_BLUE_YELLOW,
-    ROW_BLUE_YELLOW,
-    ROW_BLUE_YELLOW,
-    ROW_BLUE_YELLOW,
-
-    ROW_BLUE_YELLOW,
-    ROW_BLUE_YELLOW,
-    ROW_BLUE_YELLOW,
-    ROW_BLUE_YELLOW,
-    ROW_BLUE_YELLOW,
-
-    ROW_BLUE_YELLOW,
-    ROW_BLUE_YELLOW,
-    ROW_BLUE_YELLOW,
-    ROW_BLUE_YELLOW,
-    ROW_BLUE_YELLOW
-};
+#include "image_rgb.h"
 
 XAxiDma AxiDma;
 #define DMA_DEV_ID      XPAR_AXIDMA_0_DEVICE_ID
@@ -373,7 +277,7 @@ int main() {
         xil_printf("BitStream malloc failed\r\n");
         return XST_FAILURE;
     }
-    uint64_t BitCount = HuffmanEncoding(HuffmanBlock, NumBlocks * 6, BitStream);
+    uint32_t BitCount = (uint32_t)HuffmanEncoding(HuffmanBlock, NumBlocks * 6, BitStream);
     free(HuffmanBlock);
 
     FIL fil;
@@ -396,8 +300,8 @@ int main() {
 
     f_close(&fil);
 
-    xil_printf("BitCount: %llu bits\r\n", BitCount);
-    xil_printf("Bitstream written: %lu bytes\r\n", NumBytes);
+    xil_printf("BitCount: %u bits\r\n", BitCount);
+    xil_printf("Bitstream written: %u bytes\r\n", NumBytes);
 
     free(BitStream);
 

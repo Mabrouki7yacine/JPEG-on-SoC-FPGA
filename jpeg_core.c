@@ -1,6 +1,6 @@
 #include "jpeg_core.h"
 
-uint32_t RGB2YCbCr(const RGB* RGB_stream, const uint16_t block_size, uint8_t *Y_Channel, uint8_t *Cb_Channel, uint8_t *Cr_Channel)
+uint32_t RGB2YCbCr(const RGB* RGB_stream, const uint32_t block_size, uint8_t *Y_Channel, uint8_t *Cb_Channel, uint8_t *Cr_Channel)
 {
     assert((block_size % 16) == 0);
 
@@ -270,11 +270,11 @@ uint32_t DownSampling(uint8_t *Cb_Channel, uint8_t *Cr_Channel, uint16_t width, 
     assert((width % 2) == 0);
     assert((height % 2) == 0);
     
-    const uint16_t out_width = width / 2;
+    const uint32_t out_width = width / 2;
 
     for (uint16_t i = 0; i < height; i+=2) {
         for (uint16_t j = 0; j < width; j+=2) {
-            const uint16_t out_index = (j / 2) + (i / 2) * out_width;
+            const uint32_t out_index = (j / 2) + (i / 2) * out_width;
             uint16_t Cb_Acc = (uint16_t) Cb_Channel[(j + 0) + (i + 0) *  width] +  (uint16_t)  Cb_Channel[(j + 1) + (i + 0) *  width];
             Cb_Acc += Cb_Channel[(j + 0) + (i + 1) *  width] + Cb_Channel[(j + 1) + (i + 1) *  width];
             Cb_Acc += 2;

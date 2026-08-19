@@ -8,12 +8,12 @@ from pathlib import Path
 # Configuration
 # ============================================================
 
-INPUT_FILE  = "BitStream.bin"
-OUTPUT_FILE = "image.jpg"
+INPUT_FILE  = "BitStream1.bin"
+OUTPUT_FILE = "image1.jpg"
 
-WIDTH     = 60
-HEIGHT    = 40
-BIT_COUNT = 2271
+WIDTH     = 480
+HEIGHT    = 640
+BIT_COUNT = 172606
 
 
 # ============================================================
