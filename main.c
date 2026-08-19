@@ -5,6 +5,8 @@
 #include "xil_printf.h"
 #include "xparameters.h"
 #include "xtime_l.h"
+#include "ff.h"
+#include "xdevcfg.h"
 
 #define IMAGE_HEIGHT 40
 #define IMAGE_WIDTH  60
@@ -15,16 +17,110 @@
 
 #define IMAGE_SIZE (IMAGE_HEIGHT * IMAGE_WIDTH)
 
-const RGB ImageRGB[IMAGE_SIZE];
+#define RED_PIXEL       {255,   0,   0}
+#define GREEN_PIXEL     {  0, 255,   0}
+#define BLUE_PIXEL      {  0,   0, 255}
+#define YELLOW_PIXEL    {255, 255,   0}
+
+
+/* 10 pixels */
+#define RED_10      RED_PIXEL, RED_PIXEL, RED_PIXEL, RED_PIXEL, RED_PIXEL, \
+                    RED_PIXEL, RED_PIXEL, RED_PIXEL, RED_PIXEL, RED_PIXEL
+
+#define GREEN_10    GREEN_PIXEL, GREEN_PIXEL, GREEN_PIXEL, GREEN_PIXEL, GREEN_PIXEL, \
+                    GREEN_PIXEL, GREEN_PIXEL, GREEN_PIXEL, GREEN_PIXEL, GREEN_PIXEL
+
+#define BLUE_10     BLUE_PIXEL, BLUE_PIXEL, BLUE_PIXEL, BLUE_PIXEL, BLUE_PIXEL, \
+                    BLUE_PIXEL, BLUE_PIXEL, BLUE_PIXEL, BLUE_PIXEL, BLUE_PIXEL
+
+#define YELLOW_10   YELLOW_PIXEL, YELLOW_PIXEL, YELLOW_PIXEL, YELLOW_PIXEL, YELLOW_PIXEL, \
+                    YELLOW_PIXEL, YELLOW_PIXEL, YELLOW_PIXEL, YELLOW_PIXEL, YELLOW_PIXEL
+
+
+/* One 60-pixel row:
+ * 30 pixels left color + 30 pixels right color
+ */
+#define ROW_RED_GREEN \
+    RED_10, RED_10, RED_10, \
+    GREEN_10, GREEN_10, GREEN_10
+
+#define ROW_BLUE_YELLOW \
+    BLUE_10, BLUE_10, BLUE_10, \
+    YELLOW_10, YELLOW_10, YELLOW_10
+
+
+const RGB ImageRGB[IMAGE_SIZE] = {
+
+    /* Rows 0 - 19 : RED | GREEN */
+
+    ROW_RED_GREEN,
+    ROW_RED_GREEN,
+    ROW_RED_GREEN,
+    ROW_RED_GREEN,
+    ROW_RED_GREEN,
+
+    ROW_RED_GREEN,
+    ROW_RED_GREEN,
+    ROW_RED_GREEN,
+    ROW_RED_GREEN,
+    ROW_RED_GREEN,
+
+    ROW_RED_GREEN,
+    ROW_RED_GREEN,
+    ROW_RED_GREEN,
+    ROW_RED_GREEN,
+    ROW_RED_GREEN,
+
+    ROW_RED_GREEN,
+    ROW_RED_GREEN,
+    ROW_RED_GREEN,
+    ROW_RED_GREEN,
+    ROW_RED_GREEN,
+
+
+    /* Rows 20 - 39 : BLUE | YELLOW */
+
+    ROW_BLUE_YELLOW,
+    ROW_BLUE_YELLOW,
+    ROW_BLUE_YELLOW,
+    ROW_BLUE_YELLOW,
+    ROW_BLUE_YELLOW,
+
+    ROW_BLUE_YELLOW,
+    ROW_BLUE_YELLOW,
+    ROW_BLUE_YELLOW,
+    ROW_BLUE_YELLOW,
+    ROW_BLUE_YELLOW,
+
+    ROW_BLUE_YELLOW,
+    ROW_BLUE_YELLOW,
+    ROW_BLUE_YELLOW,
+    ROW_BLUE_YELLOW,
+    ROW_BLUE_YELLOW,
+
+    ROW_BLUE_YELLOW,
+    ROW_BLUE_YELLOW,
+    ROW_BLUE_YELLOW,
+    ROW_BLUE_YELLOW,
+    ROW_BLUE_YELLOW
+};
 
 XAxiDma AxiDma;
 #define DMA_DEV_ID      XPAR_AXIDMA_0_DEVICE_ID
+
+static FATFS fatfs;
 
 int main() {
     uint32_t RetVal = -1;
     XAxiDma_Config *CfgPtr;
 
     xil_printf("\r\nJpeg Core Test Started\r\n");
+
+    RetVal = sd_mount(&fatfs);
+    if (RetVal != XST_SUCCESS) {
+        xil_printf("SD mount failed\r\n");
+        return XST_FAILURE;
+    }
 
     CfgPtr = XAxiDma_LookupConfig(DMA_DEV_ID);
     if (!CfgPtr) {
@@ -280,4 +376,30 @@ int main() {
     uint64_t BitCount = HuffmanEncoding(HuffmanBlock, NumBlocks * 6, BitStream);
     free(HuffmanBlock);
 
+    FIL fil;
+    FRESULT Result;
+    UINT BytesWritten;
+
+    uint32_t NumBytes = (BitCount + 7) / 8;
+    Result = f_open( &fil, "BitStream.bin", FA_CREATE_ALWAYS | FA_WRITE);
+    if (Result != FR_OK) {
+        xil_printf("f_open failed: %d\r\n", Result);
+        return XST_FAILURE;
+    }
+
+    Result = f_write(&fil, (void*) BitStream, NumBytes, &BytesWritten);
+    if (Result != FR_OK || BytesWritten != NumBytes) {
+        xil_printf("f_write failed\r\n");
+        f_close(&fil);
+        return XST_FAILURE;
+    }
+
+    f_close(&fil);
+
+    xil_printf("BitCount: %llu bits\r\n", BitCount);
+    xil_printf("Bitstream written: %lu bytes\r\n", NumBytes);
+
+    free(BitStream);
+
+    return XST_SUCCESS;
 }
