@@ -197,31 +197,31 @@ static const uint8_t DC_CATEGORY_LUT[511] = {
 };
 
 static const HuffmanCode_t DC_LUMA_HUFFMAN[12] = {
-    {0b00,        2},   // category 0
-    {0b010,       3},   // category 1
-    {0b011,       3},   // category 2
-    {0b100,       3},   // category 3
-    {0b101,       3},   // category 4
-    {0b110,       3},   // category 5
-    {0b1110,      4},   // category 6
-    {0b11110,     5},   // category 7
-    {0b111110,    6},   // category 8
-    {0b1111110,   7},   // category 9
+    {0b00,        2},   // category  0
+    {0b010,       3},   // category  1
+    {0b011,       3},   // category  2
+    {0b100,       3},   // category  3
+    {0b101,       3},   // category  4
+    {0b110,       3},   // category  5
+    {0b1110,      4},   // category  6
+    {0b11110,     5},   // category  7
+    {0b111110,    6},   // category  8
+    {0b1111110,   7},   // category  9
     {0b11111110,  8},   // category 10
     {0b111111110, 9}    // category 11
 };
 
 static const HuffmanCode_t DC_CHROMA_HUFFMAN[12] = {
-    {0b00,           2},   // category 0
-    {0b01,           2},   // category 1
-    {0b10,           2},   // category 2
-    {0b110,          3},   // category 3
-    {0b1110,         4},   // category 4
-    {0b11110,        5},   // category 5
-    {0b111110,       6},   // category 6
-    {0b1111110,      7},   // category 7
-    {0b11111110,     8},   // category 8
-    {0b111111110,    9},   // category 9
+    {0b00,           2},   // category  0
+    {0b01,           2},   // category  1
+    {0b10,           2},   // category  2
+    {0b110,          3},   // category  3
+    {0b1110,         4},   // category  4
+    {0b11110,        5},   // category  5
+    {0b111110,       6},   // category  6
+    {0b1111110,      7},   // category  7
+    {0b11111110,     8},   // category  8
+    {0b111111110,    9},   // category  9
     {0b1111111110,  10},   // category 10
     {0b11111111110, 11}    // category 11
 };
