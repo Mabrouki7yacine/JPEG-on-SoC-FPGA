@@ -18,6 +18,15 @@ XAxiDma AxiDma;
 static FATFS fatfs;
 
 int main() {
+    XTime ReadStart, ReadEnd;
+    XTime ConvertStart, ConvertEnd;
+    XTime PLStart, PLEnd;
+    XTime WriteStart, WriteEnd;
+
+    uint32_t ReadTime_us;
+    uint32_t ConvertTime_us;
+    uint32_t PLTime_us;
+    uint32_t WriteTime_us;
     uint32_t RetVal = -1;
     XAxiDma_Config *CfgPtr;
 
@@ -49,7 +58,8 @@ int main() {
     FIL SrcFile;
     uint32_t height;
     uint32_t width;
-    
+
+    XTime_GetTime(&ReadStart);
     uint32_t FileSize  = DecodeBmpHeader("image.bmp", &SrcFile);
     if (FileSize == 0) {
         xil_printf( "Wrong BMP File Size = 0\r\n");
@@ -85,6 +95,10 @@ int main() {
         return XST_FAILURE;
     }
 
+    XTime_GetTime(&ReadEnd);
+
+
+    XTime_GetTime(&ConvertStart);
     uint8_t* YChannel  = malloc(ImageSize);
     if (YChannel == NULL) {
         xil_printf("YChannel malloc failed\r\n");
@@ -129,31 +143,31 @@ int main() {
     switch (Padding)
     {
         case PADDED_ALREADY:
-            xil_printf("Padding: already aligned, no padding required\r\n");
+            // xil_printf("Padding: already aligned, no padding required\r\n");
             YChannelPadded = YChannel;
             free(YChannelPd);
             break;
 
         case REQUIRE_H_PADDING:
-            xil_printf("Padding: height padding required\r\n");
+            // xil_printf("Padding: height padding required\r\n");
             YChannelPadded = YChannelPd;
             free(YChannel);
             break;
 
         case REQUIRE_W_PADDING:
-            xil_printf("Padding: width padding required\r\n");
+            // xil_printf("Padding: width padding required\r\n");
             YChannelPadded = YChannelPd;
             free(YChannel);
             break;
 
         case REQUIRE_F_PADDING:
-            xil_printf("Padding: width and height padding required\r\n");
+            // xil_printf("Padding: width and height padding required\r\n");
             YChannelPadded = YChannelPd;
             free(YChannel);
             break;
 
         default:
-            xil_printf("Padding: unknown value\r\n");
+            // xil_printf("Padding: unknown value\r\n");
             free(YChannelPd);
             free(YChannel);
             return XST_FAILURE;
@@ -170,31 +184,31 @@ int main() {
     switch (Padding)
     {
         case PADDED_ALREADY:
-            xil_printf("Padding: already aligned, no padding required\r\n");
+            // xil_printf("Padding: already aligned, no padding required\r\n");
             CbChannelPadded = CbChannel;
             free(CbChannelPd);
             break;
 
         case REQUIRE_H_PADDING:
-            xil_printf("Padding: height padding required\r\n");
+            // xil_printf("Padding: height padding required\r\n");
             CbChannelPadded = CbChannelPd;
             free(CbChannel);
             break;
 
         case REQUIRE_W_PADDING:
-            xil_printf("Padding: width padding required\r\n");
+            // xil_printf("Padding: width padding required\r\n");
             CbChannelPadded = CbChannelPd;
             free(CbChannel);
             break;
 
         case REQUIRE_F_PADDING:
-            xil_printf("Padding: width and height padding required\r\n");
+            // xil_printf("Padding: width and height padding required\r\n");
             CbChannelPadded = CbChannelPd;
             free(CbChannel);
             break;
 
         default:
-            xil_printf("Padding: unknown value\r\n");
+            // xil_printf("Padding: unknown value\r\n");
             free(CbChannelPd);
             free(CbChannel);
             return XST_FAILURE;
@@ -211,31 +225,31 @@ int main() {
     switch (Padding)
     {
         case PADDED_ALREADY:
-            xil_printf("Padding: already aligned, no padding required\r\n");
+            // xil_printf("Padding: already aligned, no padding required\r\n");
             CrChannelPadded = CrChannel;
             free(CrChannelPd);
             break;
 
         case REQUIRE_H_PADDING:
-            xil_printf("Padding: height padding required\r\n");
+            // xil_printf("Padding: height padding required\r\n");
             CrChannelPadded = CrChannelPd;
             free(CrChannel);
             break;
 
         case REQUIRE_W_PADDING:
-            xil_printf("Padding: width padding required\r\n");
+            // xil_printf("Padding: width padding required\r\n");
             CrChannelPadded = CrChannelPd;
             free(CrChannel);
             break;
 
         case REQUIRE_F_PADDING:
-            xil_printf("Padding: width and height padding required\r\n");
+            // xil_printf("Padding: width and height padding required\r\n");
             CrChannelPadded = CrChannelPd;
             free(CrChannel);
             break;
 
         default:
-            xil_printf("Padding: unknown value\r\n");
+            // xil_printf("Padding: unknown value\r\n");
             free(CrChannelPd);
             free(CrChannel);
             return XST_FAILURE;
@@ -283,6 +297,7 @@ int main() {
         return XST_FAILURE;
     }
 
+    XTime_GetTime(&PLStart);
     for (uint16_t i = 0; i < NumBlocks; i++) {
         RetVal = (uint32_t) SendBlockToPL(&AxiDma, &(uMCU_block[i]), &(sMCU_block[i]));
         if (RetVal != XST_SUCCESS) {
@@ -307,6 +322,7 @@ int main() {
         );
     }
     free(uMCU_block);
+    XTime_GetTime(&PLEnd);
 
     int8_t previousY = 0;
     int8_t previousCb = 0;
@@ -337,8 +353,10 @@ int main() {
     uint32_t BitCount = (uint32_t)HuffmanEncoding_ByteStuffing(HuffmanBlock, NumBlocks * 6, BitStream);
     free(HuffmanBlock);
 
+    XTime_GetTime(&ConvertEnd);
     FIL file;
     uint32_t Result;
+    XTime_GetTime(&WriteStart);
 
     uint32_t NumBytes = (BitCount) / 8;
     Result = CreateJpegFile("image", &file);
@@ -412,11 +430,40 @@ int main() {
         xil_printf("CreateEOI failed\r\n");
         return XST_FAILURE;
     }
+    free(BitStream);
+    XTime_GetTime(&WriteEnd);
 
     xil_printf("BitCount: %u bits\r\n", BitCount);
     xil_printf("Bitstream written: %u bytes\r\n", NumBytes);
 
-    free(BitStream);
+    ReadTime_us = (uint32_t)(
+        ((uint64_t)(ReadEnd - ReadStart) * 1000000ULL)
+        / COUNTS_PER_SECOND
+    );
 
+    ConvertTime_us = (uint32_t)(
+        ((uint64_t)(ConvertEnd - ConvertStart) * 1000000ULL)
+        / COUNTS_PER_SECOND
+    );
+
+    PLTime_us = (uint32_t)(
+        ((uint64_t)(PLEnd - PLStart) * 1000000ULL)
+        / COUNTS_PER_SECOND
+    );
+
+    WriteTime_us = (uint32_t)(
+        ((uint64_t)(WriteEnd - WriteStart) * 1000000ULL)
+        / COUNTS_PER_SECOND
+    );
+
+    uint32_t FullTime_us = ReadTime_us + ConvertTime_us + WriteTime_us;
+
+    xil_printf("\r\n========== JPEG TIMING ==========\r\n");
+    xil_printf("BMP Read       : %u us\r\n", ReadTime_us);
+    xil_printf("BMP -> JPEG    : %u us\r\n", ConvertTime_us);
+    xil_printf("PL stage       : %u us\r\n", PLTime_us);
+    xil_printf("JPEG SD Write  : %u us\r\n", WriteTime_us);
+    xil_printf("Full Time      : %u us\r\n", FullTime_us);
+    xil_printf("=================================\r\n");
     return XST_SUCCESS;
 }
