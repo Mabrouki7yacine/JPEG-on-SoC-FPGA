@@ -43,6 +43,12 @@ typedef struct __attribute__((packed)) {
 } RGB;
 
 typedef struct __attribute__((packed)) {
+    uint8_t B;
+    uint8_t G;
+    uint8_t R;
+} BGR;
+
+typedef struct __attribute__((packed)) {
     uint8_t Y;
     uint8_t Cb;
     uint8_t Cr;
