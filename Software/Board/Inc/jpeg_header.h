@@ -7,15 +7,12 @@
 #include "xil_printf.h"
 #include "xparameters.h"
 #include "ff.h"
-#include "JpegTables.h"
 #include "jpeg_core.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
 
-const uint8_t SOI_marker[2]  = {0xFF, 0xD8}; 
-const uint8_t EOI_marker[2]  = {0xFF, 0xD9}; 
 
 uint32_t CreateJpegFile(const char* FileName, FIL* file);
 uint32_t CreateSOI(FIL* file);

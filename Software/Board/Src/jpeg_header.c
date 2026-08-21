@@ -1,10 +1,14 @@
 #include "jpeg_header.h"
+#include "JpegTables.h"
+
+const uint8_t SOI_marker[2]  = {0xFF, 0xD8};
+const uint8_t EOI_marker[2]  = {0xFF, 0xD9};
 
 uint32_t CreateJpegFile(const char* FileName, FIL* file) {
     assert(file  != NULL);
     char buffer[50 + 5];
     snprintf(buffer, sizeof(buffer), "%.50s.jpg", FileName);
-    return f_open(file, buffer, FA_WRITE | FA_CREATE_ALWAYS);
+    return  (uint32_t) f_open(file, buffer, FA_WRITE | FA_CREATE_ALWAYS);
 }
 
 uint32_t CreateSOI(FIL* file) {
@@ -198,9 +202,18 @@ uint32_t CreateSOS(FIL* file) {
     return (uint32_t) (XST_SUCCESS);
 }
 
-// uint32_t AddEntropy(FIL* file, const uint8_t* BitStream, uint32_t NumBytes) {
-//     return (uint32_t) (XST_SUCCESS);
-// }
+uint32_t AddEntropy(FIL* file, const uint8_t* BitStream, uint32_t NumBytes) {
+    UINT BytesWritten;
+    FRESULT Result = f_write(file, BitStream, NumBytes, &BytesWritten);
+
+    if (Result != FR_OK || BytesWritten != NumBytes) {
+        xil_printf("f_write Entropy failed\r\n");
+        f_close(file);
+        return (uint32_t)XST_FAILURE;
+    }
+
+    return (uint32_t)XST_SUCCESS;
+}
 
 uint32_t CreateEOI(FIL* file) {
     assert(file  != NULL);
@@ -211,5 +224,6 @@ uint32_t CreateEOI(FIL* file) {
         f_close(file);
         return (uint32_t) (XST_FAILURE);
     }
+    f_close(file);
     return (uint32_t) (XST_SUCCESS);
 }

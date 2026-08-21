@@ -1,4 +1,5 @@
 #include "jpeg_core.h"
+#include "jpeg_header.h"
 #include "xaxidma.h"
 #include "xil_types.h"
 #include "xil_cache.h"
@@ -8,6 +9,7 @@
 #include "ff.h"
 #include "xdevcfg.h"
 #include "image_rgb.h"
+#include "JpegTables.h"
 
 XAxiDma AxiDma;
 #define DMA_DEV_ID      XPAR_AXIDMA_0_DEVICE_ID
@@ -248,6 +250,10 @@ int main() {
             xil_printf("ERROR: S2MM did not finish\r\n");
             return XST_FAILURE;
         }
+        Xil_DCacheInvalidateRange(
+            (UINTPTR)&sMCU_block[i],
+            sizeof(sMCU_block_t)
+        );
     }
     free(uMCU_block);
 
@@ -280,25 +286,81 @@ int main() {
     uint32_t BitCount = (uint32_t)HuffmanEncoding_ByteStuffing(HuffmanBlock, NumBlocks * 6, BitStream);
     free(HuffmanBlock);
 
-    FIL fil;
-    FRESULT Result;
-    UINT BytesWritten;
+    FIL file;
+    uint32_t Result;
 
-    uint32_t NumBytes = (BitCount + 7) / 8;
-    Result = f_open( &fil, "BitStream.bin", FA_CREATE_ALWAYS | FA_WRITE);
-    if (Result != FR_OK) {
-        xil_printf("f_open failed: %d\r\n", Result);
+    uint32_t NumBytes = (BitCount) / 8;
+    Result = CreateJpegFile("image", &file);
+    if (Result != (uint32_t) FR_OK) {
+        xil_printf("CreateJpegFile failed\r\n");
         return XST_FAILURE;
     }
 
-    Result = f_write(&fil, (void*) BitStream, NumBytes, &BytesWritten);
-    if (Result != FR_OK || BytesWritten != NumBytes) {
-        xil_printf("f_write failed\r\n");
-        f_close(&fil);
+    Result = CreateSOI(&file);
+    if (Result != (uint32_t) XST_SUCCESS) {
+        xil_printf("CreateSOI failed\r\n");
         return XST_FAILURE;
     }
 
-    f_close(&fil);
+    Result = CreateApp0(&file);
+    if (Result != (uint32_t) XST_SUCCESS) {
+        xil_printf("CreateApp0 failed\r\n");
+        return XST_FAILURE;
+    }
+
+    Result = CreateDQT(&file, LUMA_QUANT, CHROMA_QUANT);
+    if (Result != (uint32_t) XST_SUCCESS) {
+        xil_printf("CreateDQT failed\r\n");
+        return XST_FAILURE;
+    }
+
+    Result = CreateSOF0(&file, (const uint16_t) IMAGE_HEIGHT,  (const uint16_t) IMAGE_WIDTH);
+    if (Result != (uint32_t) XST_SUCCESS) {
+        xil_printf("CreateSOF0 failed\r\n");
+        return XST_FAILURE;
+    }
+
+    Result = CreateDHT(&file, 0, 0);
+    if (Result != (uint32_t) XST_SUCCESS) {
+        xil_printf("CreateDHT failed\r\n");
+        return XST_FAILURE;
+    }
+
+    Result = CreateDHT(&file, 0, 1);
+    if (Result != (uint32_t) XST_SUCCESS) {
+        xil_printf("CreateDHT failed\r\n");
+        return XST_FAILURE;
+    }
+
+    Result = CreateDHT(&file, 1, 0);
+    if (Result != (uint32_t) XST_SUCCESS) {
+        xil_printf("CreateDHT failed\r\n");
+        return XST_FAILURE;
+    }
+
+    Result = CreateDHT(&file, 1, 1);
+    if (Result != (uint32_t) XST_SUCCESS) {
+        xil_printf("CreateDHT failed\r\n");
+        return XST_FAILURE;
+    }
+
+    Result = CreateSOS(&file);
+    if (Result != (uint32_t) XST_SUCCESS) {
+        xil_printf("CreateSOS failed\r\n");
+        return XST_FAILURE;
+    }
+
+    Result = AddEntropy(&file, BitStream, NumBytes);
+    if (Result != (uint32_t) XST_SUCCESS) {
+        xil_printf("AddEntropy failed\r\n");
+        return XST_FAILURE;
+    }
+
+    Result = CreateEOI(&file);
+    if (Result != (uint32_t) XST_SUCCESS) {
+        xil_printf("CreateEOI failed\r\n");
+        return XST_FAILURE;
+    }
 
     xil_printf("BitCount: %u bits\r\n", BitCount);
     xil_printf("Bitstream written: %u bytes\r\n", NumBytes);
