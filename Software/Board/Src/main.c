@@ -271,13 +271,13 @@ int main() {
     }
     free(sMCU_block);
 
-    uint32_t MaxBitStreamSize = NumBlocks * 6 * MAX_BYTES_PER_BLOCK;
+    uint32_t MaxBitStreamSize = NumBlocks * 6 * MAX_STUFFED_BYTES_PER_BLOCK;
     uint8_t* BitStream = calloc(MaxBitStreamSize, sizeof(uint8_t));
     if (BitStream == NULL) {
         xil_printf("BitStream malloc failed\r\n");
         return XST_FAILURE;
     }
-    uint32_t BitCount = (uint32_t)HuffmanEncoding(HuffmanBlock, NumBlocks * 6, BitStream);
+    uint32_t BitCount = (uint32_t)HuffmanEncoding_ByteStuffing(HuffmanBlock, NumBlocks * 6, BitStream);
     free(HuffmanBlock);
 
     FIL fil;

@@ -307,91 +307,6 @@ uint32_t GetNumBlocks16x16(uint32_t width, uint32_t height)
     return blocks_x * blocks_y;
 }
 
-// Padding PaddImage(uint8_t *Src_Channel, uint16_t width, uint16_t height, ChType type, uint8_t *Out_Channel)
-// {
-//     uint16_t width_div = width / 16;
-//     uint16_t width_rem = width % type;
-
-//     uint16_t height_div = height / 16;
-//     uint16_t height_rem = height % type;
-
-//     uint16_t new_width  = width_rem  == 0 ? width  : width  + (type - width_rem);
-//     uint16_t new_height = height_rem == 0 ? height : height + (type - height_rem);
-
-//     Padding retval = PADDED_ALREADY;
-
-//     if (width_rem != 0) {
-//         retval = REQUIRE_W_PADDING;
-//         for (uint16_t i = 0; i < height; i++) {
-//             for (uint16_t j = 0; j < width_div * 16; j+=16) {
-//                 uint8x16_t  vSrc = vld1q_u8( &(Src_Channel[i * width + j]) );
-//                 vst1q_u8(&(Out_Channel[i * new_width + j]) , vSrc);
-//             }
-//             for (uint16_t j = width_div * 16; j < new_width; j++) {
-//                 Out_Channel[i * new_width + j] = Src_Channel[i * width + width - 1]; 
-//             }
-//         }
-//     }
-//     if (height_rem != 0) {
-//         if (retval != REQUIRE_W_PADDING) {
-//             retval = REQUIRE_H_PADDING;
-//             if (type == Luminance) {
-//                 for (uint16_t i = 0; i < height; i++) {
-//                     for (uint16_t j = 0; j < width; j+=16) {
-//                         uint8x16_t  vSrc = vld1q_u8( &(Src_Channel[i * width + j]) );
-//                         vst1q_u8(&(Out_Channel[i * width + j]) , vSrc);
-//                     }
-//                 }
-//             } else if (type == Chroma) {
-//                  for (uint16_t i = 0; i < height; i++) {
-//                     for (uint16_t j = 0; j < width; j+=8) {
-//                         uint8x8_t  vSrc = vld1_u8( &(Src_Channel[i * width + j]) );
-//                         vst1_u8(&(Out_Channel[i * width + j]) , vSrc);
-//                     }
-//                 }
-//             }
-
-//             if (type == Luminance) {
-//                 for (uint16_t i = height; i < new_height; i++) {
-//                     for (uint16_t j = 0; j < new_width; j+=16) {
-//                         uint8x16_t  vSrc = vld1q_u8( &(Out_Channel[new_width * (height - 1) + j]) );
-//                         vst1q_u8(&(Out_Channel[i * new_width + j]) , vSrc);
-//                     }
-//                 }
-//             } else if (type == Chroma) {
-//                 for (uint16_t i = height; i < new_height; i++) {
-//                     for (uint16_t j = 0; j < new_width; j+=8) {
-//                         uint8x8_t  vSrc = vld1_u8( &(Out_Channel[new_width * (height - 1) + j]) );
-//                         vst1_u8(&(Out_Channel[i * new_width + j]) , vSrc);
-//                     }
-//                 }
-//             }
-//         } else {
-//             retval = REQUIRE_F_PADDING;
-//             if (type == Luminance) {
-//                 for (uint16_t i = height; i < new_height; i++) {
-//                     for (uint16_t j = 0; j < new_width; j+=16) {
-//                         uint8x16_t  vSrc = vld1q_u8( &(Out_Channel[new_width * (height - 1) + j]) );
-//                         vst1q_u8(&(Out_Channel[i * new_width + j]) , vSrc);
-//                     }
-//                 }
-//             } else if (type == Chroma) {
-//                 for (uint16_t i = height; i < new_height; i++) {
-//                     for (uint16_t j = 0; j < width_div * 16; j+=8) {
-//                         uint8x8_t  vSrc = vld1_u8( &(Out_Channel[new_width * (height - 1) + j]) );
-//                         vst1_u8(&(Out_Channel[i * new_width + j]) , vSrc);
-//                     }
-//                 }
-//             }
-//         }
-
-//     }
-
-//     return retval;
-// }
-
-
-
 Padding_t PaddImage(const uint8_t *Src_Channel, uint16_t width, uint16_t height, ChType type, uint8_t *Out_Channel ) 
 {
     assert(Src_Channel != NULL);
@@ -767,7 +682,8 @@ void DCDiffEnc_ZigZag_RLE(
     }
 }
 
-uint64_t HuffmanEncoding(const HuffmanBlock_t *HuffmanBlock, uint32_t NumBlocks, uint8_t* bitstream) {
+// Inchallah manzidch nkhrb f hadi l func
+uint64_t HuffmanEncoding_ByteStuffing(const HuffmanBlock_t *HuffmanBlock, uint32_t NumBlocks, uint8_t* bitstream) {
     uint64_t BitCount = 0;
     for (uint32_t i = 0; i < NumBlocks; i++) {
         uint8_t DcCategory = GetCategoryInt16(HuffmanBlock[i].DC);
@@ -781,16 +697,17 @@ uint64_t HuffmanEncoding(const HuffmanBlock_t *HuffmanBlock, uint32_t NumBlocks,
         HuffmanCode_t huff = ((i % 6) < 4) ? DC_LUMA_HUFFMAN[DcCategory] : DC_CHROMA_HUFFMAN[DcCategory];
         uint8_t BitsToWrite = DcCategory + huff.length;
         uint32_t Bits = (huff.code << DcCategory) | amplitude;
-
+        uint32_t BytesWritten = 0;
         if (BitCount % 8 == 0) {
             if (BitsToWrite > 8) {
                 uint8_t RemainingBits = BitsToWrite - 8;
                 bitstream[BitCount / 8] = (Bits >> RemainingBits) & 0xFF;
                 bitstream[(BitCount / 8) + 1] = (Bits & ((1U << RemainingBits) - 1)) << (8 - RemainingBits);        
-
+                BytesWritten = 2;
             } else {
                 uint8_t Shift = 8 - BitsToWrite; 
                 bitstream[BitCount / 8] = (Bits & 0xFF) << Shift;
+                BytesWritten = 1;
             }
         } else {
             if (BitsToWrite > 16 - (BitCount % 8)) {
@@ -806,6 +723,7 @@ uint64_t HuffmanEncoding(const HuffmanBlock_t *HuffmanBlock, uint32_t NumBlocks,
                 BitWrite = BitsToWrite - BitWritten;
                 Shift = 8 - BitWrite; 
                 bitstream[(BitCount / 8) + 2] = Bits << Shift;
+                BytesWritten = 3;
             } else if (BitsToWrite > 8 - (BitCount % 8)) {
                 uint8_t BitWrite = 8 - (BitCount % 8);
                 uint8_t Shift = BitsToWrite - BitWrite; 
@@ -814,14 +732,36 @@ uint64_t HuffmanEncoding(const HuffmanBlock_t *HuffmanBlock, uint32_t NumBlocks,
                 BitWrite = BitsToWrite - BitWrite;
                 Shift = 8 - BitWrite; 
                 bitstream[(BitCount / 8) + 1] = Bits << Shift;
+                BytesWritten = 2;
             } else {
                 uint8_t RemainingBits = 8 - BitsToWrite;
                 uint8_t Shift = RemainingBits - (BitCount % 8); 
                 bitstream[(BitCount / 8)] |= (Bits & ((1U << BitsToWrite) - 1)) << (Shift);
+                BytesWritten = 1;
+            }
+        }
+
+        uint8_t  FF_Shifts = 0;
+        uint8_t  bitstream_temp[5] = {};
+        uint64_t BaseIndex = BitCount / 8;
+
+        for (uint8_t s = 0; s < BytesWritten; s++) {
+            bitstream_temp[s] = bitstream[BaseIndex + s];
+        }
+
+        uint8_t index = 0;
+        for (uint8_t c = 0; c < BytesWritten; c++) {
+            bitstream[BaseIndex + index] =  bitstream_temp[c];
+            index++;
+            if (bitstream_temp[c] == 0xFF) {
+                bitstream[BaseIndex + index] = 0x00;
+                FF_Shifts++;
+                index++;
             }
         }
 
         BitCount += BitsToWrite;
+        BitCount += (FF_Shifts * 8);
 
         for (uint8_t j = 0; j < HuffmanBlock[i].RLE_Entry_Count; j++) {
             RLE_Entry_t RLE_Entry = HuffmanBlock[i].RLE_Entry[j];
@@ -848,14 +788,17 @@ uint64_t HuffmanEncoding(const HuffmanBlock_t *HuffmanBlock, uint32_t NumBlocks,
                     bitstream[(BitCount / 8) + 1] = (Bits >> RemainingBits) & 0xFF;
 
                     bitstream[(BitCount / 8) + 2] = (Bits & ((1U << RemainingBits) - 1)) << (8 - RemainingBits);
+                    BytesWritten = 3;
                 } else if (BitsToWrite > 8) {
                     uint8_t RemainingBits = BitsToWrite - 8;
                     bitstream[BitCount / 8] = (Bits >> RemainingBits) & 0xFF;
 
-                    bitstream[(BitCount / 8) + 1] = (Bits & ((1U << RemainingBits) - 1)) << (8 - RemainingBits);             
+                    bitstream[(BitCount / 8) + 1] = (Bits & ((1U << RemainingBits) - 1)) << (8 - RemainingBits);
+                    BytesWritten = 2;
                 } else {
                     uint8_t Shift = 8 - BitsToWrite; 
                     bitstream[BitCount / 8] = (Bits & 0xFF) << Shift;
+                    BytesWritten = 1;
                 }
             } else {
                 if (BitsToWrite > 24 - (BitCount % 8)) {
@@ -876,6 +819,7 @@ uint64_t HuffmanEncoding(const HuffmanBlock_t *HuffmanBlock, uint32_t NumBlocks,
                     BitWrite = BitsToWrite - BitWritten;
                     Shift = 8 - BitWrite; 
                     bitstream[(BitCount / 8) + 3] = Bits << Shift;
+                    BytesWritten = 4;
                 } else if (BitsToWrite > 16 - (BitCount % 8)) {
                     uint8_t BitWritten = 0;
                     uint8_t BitWrite = 8 - (BitCount % 8);
@@ -889,6 +833,7 @@ uint64_t HuffmanEncoding(const HuffmanBlock_t *HuffmanBlock, uint32_t NumBlocks,
                     BitWrite = BitsToWrite - BitWritten;
                     Shift = 8 - BitWrite; 
                     bitstream[(BitCount / 8) + 2] = Bits << Shift;
+                    BytesWritten = 3;
                 } else if (BitsToWrite > 8 - (BitCount % 8)) {
                     uint8_t BitWrite = 8 - (BitCount % 8);
                     uint8_t Shift = BitsToWrite - BitWrite; 
@@ -897,16 +842,53 @@ uint64_t HuffmanEncoding(const HuffmanBlock_t *HuffmanBlock, uint32_t NumBlocks,
                     BitWrite = BitsToWrite - BitWrite;
                     Shift = 8 - BitWrite; 
                     bitstream[(BitCount / 8) + 1] = Bits << Shift;
+                    BytesWritten = 2;
                 } else {
                     uint8_t RemainingBits = 8 - BitsToWrite;
                     uint8_t Shift = RemainingBits - (BitCount % 8); 
                     bitstream[(BitCount / 8)] |= (Bits & ((1U << BitsToWrite) - 1)) << (Shift);
+                    BytesWritten = 1;
                 }
             }
-            
-            BitCount += BitsToWrite;
 
+            uint8_t  FF_Shifts = 0;
+            uint8_t  bitstream_temp[5] = {};
+            uint64_t BaseIndex = BitCount / 8;
+
+            for (uint8_t s = 0; s < BytesWritten; s++) {
+                bitstream_temp[s] = bitstream[BaseIndex + s];
+            }
+
+            uint8_t index = 0;
+            for (uint8_t c = 0; c < BytesWritten; c++) {
+                bitstream[BaseIndex + index] =  bitstream_temp[c];
+                index++;
+                if (bitstream_temp[c] == 0xFF) {
+                    bitstream[BaseIndex + index] = 0x00;
+                    FF_Shifts++;
+                    index++;
+                }
+            }
+
+            BitCount += BitsToWrite;
+            BitCount += (FF_Shifts * 8);
         }
     }
+    uint64_t RemainingBits = 8 - (BitCount % 8);
+
+    if (RemainingBits != 8) {
+        uint64_t LastByteIndex = BitCount / 8;
+
+        uint8_t mask = (1U << RemainingBits) - 1;
+        bitstream[LastByteIndex] |= mask;
+
+        BitCount += RemainingBits;
+
+        if (bitstream[LastByteIndex] == 0xFF) {
+            bitstream[LastByteIndex + 1] = 0x00;
+            BitCount += 8;
+        }
+    }
+    
     return BitCount;
 }

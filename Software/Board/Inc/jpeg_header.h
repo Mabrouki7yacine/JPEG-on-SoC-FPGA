@@ -8,6 +8,7 @@
 #include "xparameters.h"
 #include "ff.h"
 #include "JpegTables.h"
+#include "jpeg_core.h"
 
 #include <stdio.h>
 #include <stdlib.h>

@@ -31,6 +31,11 @@
 #define ZRL_VALUE 0xF0
 #define EOB_VALUE 0x00
 
+#define MAX_BITS_PER_BLOCK           1536
+#define MAX_RAW_BYTES_PER_BLOCK      ((MAX_BITS_PER_BLOCK + 7) / 8)
+#define MAX_STUFFED_BYTES_PER_BLOCK  (MAX_RAW_BYTES_PER_BLOCK * 2)
+
+
 typedef struct __attribute__((packed)) {
     uint8_t R;
     uint8_t G;
@@ -617,7 +622,7 @@ void DCDiffEnc_ZigZag_RLE(
     int8_t *previousCb,
     int8_t *previousCr);
 
-uint64_t HuffmanEncoding(const HuffmanBlock_t *HuffmanBlock, uint32_t NumBlocks, uint8_t* bitstream);
+uint64_t HuffmanEncoding_ByteStuffing(const HuffmanBlock_t *HuffmanBlock, uint32_t NumBlocks, uint8_t* bitstream);
 
 
 #endif
