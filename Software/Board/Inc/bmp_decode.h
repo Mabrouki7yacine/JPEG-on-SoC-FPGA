@@ -6,6 +6,7 @@
 #include <stdint.h>
 
 #include <ff.h>
+#include <assert.h>
 #include <xstatus.h>
 #include <xil_types.h>
 #include <xil_cache.h>

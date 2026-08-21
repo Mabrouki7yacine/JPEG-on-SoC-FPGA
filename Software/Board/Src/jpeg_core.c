@@ -261,12 +261,7 @@ uint32_t RGB2YCbCr(const RGB* RGB_stream, const uint32_t block_size, uint8_t *Y_
     return 0;
 }
 
-uint32_t BGR2YCbCr(
-    const BGR* BGR_stream,
-    const uint32_t block_size,
-    uint8_t *Y_Channel,
-    uint8_t *Cb_Channel,
-    uint8_t *Cr_Channel)
+uint32_t BGR2YCbCr(const BGR* BGR_stream, const uint32_t block_size, uint8_t *Y_Channel, uint8_t *Cb_Channel, uint8_t *Cr_Channel)
 {
     assert((block_size % 16) == 0);
 

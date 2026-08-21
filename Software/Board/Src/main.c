@@ -8,8 +8,9 @@
 #include "xtime_l.h"
 #include "ff.h"
 #include "xdevcfg.h"
-#include "image_rgb.h"
+// #include "image_rgb.h"
 #include "JpegTables.h"
+#include "bmp_decode.h"
 
 XAxiDma AxiDma;
 #define DMA_DEV_ID      XPAR_AXIDMA_0_DEVICE_ID
@@ -45,35 +46,85 @@ int main() {
         return XST_FAILURE;
     }
 
-    uint8_t* YChannel  = malloc(IMAGE_SIZE);
-    if (YChannel == NULL) {
-        xil_printf("YChannel malloc failed\r\n");
+    FIL SrcFile;
+    uint32_t height;
+    uint32_t width;
+    
+    uint32_t FileSize  = DecodeBmpHeader("image.bmp", &SrcFile);
+    if (FileSize == 0) {
+        xil_printf( "Wrong BMP File Size = 0\r\n");
         return XST_FAILURE;
     }
-    uint8_t* CbChannel = malloc(IMAGE_SIZE);
+
+    uint32_t FullImageSize = DecodeDIBHeader(&SrcFile, &width, &height);
+    if (FullImageSize == 0) {
+        xil_printf( "Wrong Full Image Size = 0\r\n");
+        return XST_FAILURE;
+    }
+
+    if (FullImageSize + 54U != FileSize) {
+        xil_printf( "Wrong BMP File Size : expected %u, got %u\r\n", FullImageSize + 54U, FileSize);
+        f_close(&SrcFile);
+        return XST_FAILURE;
+    }
+
+    BGR* ImageBGR = malloc(FullImageSize);
+    if (ImageBGR == NULL) {
+        xil_printf("ImageBGR malloc failed\r\n");
+        f_close(&SrcFile);
+        return XST_FAILURE;
+    }
+
+    uint32_t ImageSize = height * width;
+
+    RetVal = ReadBGRImage(&SrcFile, (uint8_t*)ImageBGR, FullImageSize);
+
+    if (RetVal != XST_SUCCESS) {
+        xil_printf("ReadBGRImage failed\r\n");
+        free(ImageBGR);
+        return XST_FAILURE;
+    }
+
+    uint8_t* YChannel  = malloc(ImageSize);
+    if (YChannel == NULL) {
+        xil_printf("YChannel malloc failed\r\n");
+        free(ImageBGR);
+        return XST_FAILURE;
+    }
+    uint8_t* CbChannel = malloc(ImageSize);
     if (CbChannel == NULL) {
+        free(ImageBGR);
+        free(YChannel);
         xil_printf("CbChannel malloc failed\r\n");
         return XST_FAILURE;
     }
-    uint8_t* CrChannel = malloc(IMAGE_SIZE);
+    uint8_t* CrChannel = malloc(ImageSize);
     if (CrChannel == NULL) {
+        free(ImageBGR);
+        free(YChannel);
+        free(CbChannel);
         xil_printf("CrChannel malloc failed\r\n");
         return XST_FAILURE;
     }
 
-    RetVal = RGB2YCbCr(ImageRGB, IMAGE_SIZE, YChannel, CbChannel, CrChannel);
-    if (RetVal != 0) {
-        xil_printf("RGB2YCbCr failed\r\n");
+    RetVal = BGR2YCbCr(ImageBGR, ImageSize, YChannel, CbChannel, CrChannel);
+    if (RetVal != XST_SUCCESS) {
+        xil_printf("BGR2YCbCr failed\r\n");
+        free(ImageBGR);
+        free(YChannel);
+        free(CbChannel);
+        free(CrChannel);
         return XST_FAILURE;
     }
+    free(ImageBGR);
 
-    uint32_t NumBlocks = GetNumBlocks16x16(IMAGE_WIDTH, IMAGE_HEIGHT);
+    uint32_t NumBlocks = GetNumBlocks16x16(width, height);
     uint8_t* YChannelPd  = malloc(NumBlocks * 16 * 16);
     if (YChannelPd == NULL) {
         xil_printf("YChannelPd malloc failed\r\n");
         return XST_FAILURE;
     }
-    Padding_t Padding = PaddImage(YChannel, IMAGE_WIDTH, IMAGE_HEIGHT, Luminance, YChannelPd);
+    Padding_t Padding = PaddImage(YChannel, width, height, Luminance, YChannelPd);
     uint8_t* YChannelPadded =  NULL;
     switch (Padding)
     {
@@ -114,7 +165,7 @@ int main() {
         xil_printf("CbChannelPd malloc failed\r\n");
         return XST_FAILURE;
     }
-    Padding = PaddImage(CbChannel, IMAGE_WIDTH, IMAGE_HEIGHT, Chroma, CbChannelPd);
+    Padding = PaddImage(CbChannel, width, height, Chroma, CbChannelPd);
     uint8_t* CbChannelPadded =  NULL;
     switch (Padding)
     {
@@ -155,7 +206,7 @@ int main() {
         xil_printf("CrChannelPd malloc failed\r\n");
         return XST_FAILURE;
     }
-    Padding = PaddImage(CrChannel, IMAGE_WIDTH, IMAGE_HEIGHT, Chroma, CrChannelPd);
+    Padding = PaddImage(CrChannel, width, height, Chroma, CrChannelPd);
     uint8_t* CrChannelPadded =  NULL;
     switch (Padding)
     {
@@ -202,8 +253,8 @@ int main() {
         return XST_FAILURE;
     }
     
-    uint32_t PaddedWidth  = ((IMAGE_WIDTH  + 15) / 16) * 16;
-    uint32_t PaddedHeight = ((IMAGE_HEIGHT + 15) / 16) * 16;
+    uint32_t PaddedWidth  = ((width  + 15) / 16) * 16;
+    uint32_t PaddedHeight = ((height + 15) / 16) * 16;
     RetVal = DownSampling(CbChannelPadded, CrChannelPadded, PaddedWidth, PaddedHeight, CbChannelDS, CrChannelDS);
     if (RetVal != XST_SUCCESS) {
         xil_printf("DownSampling failed\r\n");
@@ -314,7 +365,7 @@ int main() {
         return XST_FAILURE;
     }
 
-    Result = CreateSOF0(&file, (const uint16_t) IMAGE_HEIGHT,  (const uint16_t) IMAGE_WIDTH);
+    Result = CreateSOF0(&file, (const uint16_t) height,  (const uint16_t) width);
     if (Result != (uint32_t) XST_SUCCESS) {
         xil_printf("CreateSOF0 failed\r\n");
         return XST_FAILURE;

@@ -599,6 +599,8 @@ static const HuffmanCode_t AC_CHROMA_HUFFMAN[256] = {
 
 uint32_t RGB2YCbCr(const RGB* RGB_stream, const uint32_t block_size, uint8_t *Y_Channel, uint8_t *Cb_Channel, uint8_t *Cr_Channel);
 
+uint32_t BGR2YCbCr(const BGR* BGR_stream, const uint32_t block_size, uint8_t *Y_Channel, uint8_t *Cb_Channel, uint8_t *Cr_Channel);
+
 uint32_t DownSampling(uint8_t *Cb_Channel, uint8_t *Cr_Channel, uint16_t width, uint16_t height, uint8_t *Cb_Out, uint8_t *Cr_Out);
 
 uint32_t GetNumBlocks8x8(uint32_t width, uint32_t height);
